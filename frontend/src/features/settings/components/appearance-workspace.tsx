@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { RefreshCcw, SlidersHorizontal } from 'lucide-react';
+import { CircleHelp, RefreshCcw } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
 import { apiClient } from '@/lib/api/client';
 import {
@@ -23,22 +23,102 @@ import { UserIcon, userIconOptions } from '@/lib/settings/user-icons';
 type PaletteField = {
   key: keyof DashboardColorSet;
   label: string;
+  help: string;
 };
 
 const paletteFields: PaletteField[] = [
-  { key: 'dashboardSurfaceColor', label: 'Fondo general' },
-  { key: 'dashboardPanelColor', label: 'Panel principal' },
-  { key: 'dashboardPanelStrongColor', label: 'Panel fuerte' },
-  { key: 'dashboardInkColor', label: 'Texto principal' },
-  { key: 'dashboardMutedColor', label: 'Texto secundario' },
-  { key: 'dashboardLineColor', label: 'Bordes' },
-  { key: 'dashboardBrandColor', label: 'Color marca' },
-  { key: 'dashboardBrandSoftColor', label: 'Marca suave' },
-  { key: 'dashboardBrandDeepColor', label: 'Marca intensa' },
-  { key: 'dashboardSuccessColor', label: 'Exito' },
-  { key: 'dashboardDangerColor', label: 'Peligro' },
-  { key: 'dashboardWarningColor', label: 'Advertencia' },
+  {
+    key: 'dashboardSurfaceColor',
+    label: 'Fondo general',
+    help: 'Color base del panel completo y del fondo principal.',
+  },
+  {
+    key: 'dashboardPanelColor',
+    label: 'Panel principal',
+    help: 'Superficie base para bloques internos y contenedores.',
+  },
+  {
+    key: 'dashboardPanelStrongColor',
+    label: 'Panel fuerte',
+    help: 'Superficie elevada para tarjetas y zonas destacadas.',
+  },
+  {
+    key: 'dashboardInkColor',
+    label: 'Texto principal',
+    help: 'Color del contenido principal y encabezados.',
+  },
+  {
+    key: 'dashboardMutedColor',
+    label: 'Texto secundario',
+    help: 'Color de apoyo para descripciones y datos menos prioritarios.',
+  },
+  {
+    key: 'dashboardLineColor',
+    label: 'Bordes',
+    help: 'Líneas, divisores y contornos del sistema.',
+  },
+  {
+    key: 'dashboardBrandColor',
+    label: 'Color marca',
+    help: 'Acento principal para acciones y estados activos.',
+  },
+  {
+    key: 'dashboardBrandSoftColor',
+    label: 'Marca suave',
+    help: 'Version suave del acento para fondos activos o resaltados.',
+  },
+  {
+    key: 'dashboardBrandDeepColor',
+    label: 'Marca intensa',
+    help: 'Version profunda del acento para contraste o texto sobre marca.',
+  },
+  {
+    key: 'dashboardSuccessColor',
+    label: 'Exito',
+    help: 'Color para estados positivos, aprobados o saldo sano.',
+  },
+  {
+    key: 'dashboardDangerColor',
+    label: 'Peligro',
+    help: 'Color para errores, alertas y acciones destructivas.',
+  },
+  {
+    key: 'dashboardWarningColor',
+    label: 'Advertencia',
+    help: 'Color para estados de atencion o seguimiento.',
+  },
 ];
+
+function HelpHint({ message }: { message: string }) {
+  return (
+    <span className="group relative inline-flex">
+      <span
+        tabIndex={0}
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-[var(--color-line)]/30 bg-[var(--color-panel)] text-[var(--color-muted)] transition hover:border-[var(--color-brand)]/40 hover:text-[var(--color-brand-deep)] focus:border-[var(--color-brand)]/40 focus:text-[var(--color-brand-deep)] focus:outline-none"
+      >
+        <CircleHelp className="h-3.5 w-3.5" />
+      </span>
+      <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-56 -translate-x-1/2 rounded-[var(--radius-control)] border border-[var(--color-line)]/40 bg-[var(--color-panel-strong)] px-3 py-2 text-xs leading-5 text-[var(--color-ink)] opacity-0 shadow-[var(--shadow-panel)] transition duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+        {message}
+      </span>
+    </span>
+  );
+}
+
+function SectionHeading({
+  title,
+  help,
+}: {
+  title: string;
+  help: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <p className="text-sm font-semibold tracking-[0.02em]">{title}</p>
+      <HelpHint message={help} />
+    </div>
+  );
+}
 
 function extractErrorMessage(error: unknown) {
   if (error instanceof AxiosError) {
@@ -64,29 +144,16 @@ function getBasePalette(base: ThemeBasePreset) {
   return base === 'DARK' ? darkThemeColors : lightThemeColors;
 }
 
-export function AppearanceWorkspace() {
-  const {
-    settings,
-    loading,
-    refreshSettings,
-    applyPreview,
-    resetPreview,
-    defaults,
-  } = useSettings();
-
-  const [themePreset, setThemePreset] = useState<ThemePreset>('LIGHT');
-  const [customThemeBase, setCustomThemeBase] = useState<ThemeBasePreset>('LIGHT');
-  const [userIcon, setUserIcon] = useState('user-round');
-  const [paletteForm, setPaletteForm] = useState<DashboardColorSet>(defaults);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (settings) {
-      setThemePreset(settings.themePreset);
-      setCustomThemeBase(settings.customThemeBase);
-      setUserIcon(settings.userIcon);
-      setPaletteForm({
+function getInitialAppearanceState(
+  settings: DashboardSettings | null,
+  defaults: DashboardColorSet,
+) {
+  if (settings) {
+    return {
+      themePreset: settings.themePreset,
+      customThemeBase: settings.customThemeBase,
+      userIcon: settings.userIcon,
+      paletteForm: {
         dashboardSurfaceColor: settings.dashboardSurfaceColor,
         dashboardPanelColor: settings.dashboardPanelColor,
         dashboardPanelStrongColor: settings.dashboardPanelStrongColor,
@@ -99,15 +166,50 @@ export function AppearanceWorkspace() {
         dashboardSuccessColor: settings.dashboardSuccessColor,
         dashboardDangerColor: settings.dashboardDangerColor,
         dashboardWarningColor: settings.dashboardWarningColor,
-      });
-      return;
-    }
+      } satisfies DashboardColorSet,
+    };
+  }
 
-    setThemePreset('LIGHT');
-    setCustomThemeBase('LIGHT');
-    setUserIcon('user-round');
-    setPaletteForm(defaults);
-  }, [defaults, settings]);
+  return {
+    themePreset: 'LIGHT' as ThemePreset,
+    customThemeBase: 'LIGHT' as ThemeBasePreset,
+    userIcon: 'user-round',
+    paletteForm: defaults,
+  };
+}
+
+function AppearanceWorkspaceForm({
+  settings,
+  loading,
+  refreshSettings,
+  applyPreview,
+  resetPreview,
+  defaults,
+}: {
+  settings: DashboardSettings | null;
+  loading: boolean;
+  refreshSettings: () => Promise<void>;
+  applyPreview: (preview: Partial<DashboardColorSet> & {
+    themePreset?: ThemePreset;
+    customThemeBase?: ThemeBasePreset;
+  }) => void;
+  resetPreview: () => void;
+  defaults: DashboardColorSet;
+}) {
+  const initialState = getInitialAppearanceState(settings, defaults);
+
+  const [themePreset, setThemePreset] = useState<ThemePreset>(
+    initialState.themePreset,
+  );
+  const [customThemeBase, setCustomThemeBase] = useState<ThemeBasePreset>(
+    initialState.customThemeBase,
+  );
+  const [userIcon, setUserIcon] = useState(initialState.userIcon);
+  const [paletteForm, setPaletteForm] = useState<DashboardColorSet>(
+    initialState.paletteForm,
+  );
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const updateAppearanceMutation = useMutation({
     mutationFn: async () => {
@@ -191,12 +293,9 @@ export function AppearanceWorkspace() {
 
   return (
     <div className="space-y-6">
-      <SectionCard
-        title="Configuracion visual"
-        subtitle="Este panel es solo para colores, icono y apariencia del usuario actual."
-      >
+      <SectionCard title="Configuracion visual">
         <form
-          className="space-y-6"
+          className="space-y-8"
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
@@ -204,29 +303,44 @@ export function AppearanceWorkspace() {
             updateAppearanceMutation.mutate();
           }}
         >
-          <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5 text-sm text-[var(--color-muted)]">
-            Aqui ajustas tema, icono y paleta personal. No modifica nombre,
-            contrasena ni configuracion global de la plataforma.
-          </div>
-
           <div className="space-y-3">
-            <p className="text-sm font-semibold">Tema del panel</p>
+            <SectionHeading
+              title="Tema del panel"
+              help="Elige una base rapida para tu interfaz. Si haces cambios manuales en la paleta, el tema pasa a personalizado."
+            />
             <div className="grid gap-4 md:grid-cols-3">
               {themePresetOptions.map((option) => (
                 <button
                   key={option.id}
                   type="button"
                   onClick={() => selectThemePreset(option.id)}
-                  className={`rounded-[var(--radius-card)] border p-5 text-left transition ${
+                  className={`rounded-[var(--radius-card)] border px-5 py-4 text-left transition ${
                     themePreset === option.id
-                      ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)]'
-                      : 'border-[var(--color-line)] bg-white'
+                      ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)] shadow-[0_12px_24px_rgba(0,0,0,0.06)]'
+                      : 'border-[var(--color-line)] bg-[var(--color-panel)] hover:border-[var(--color-brand)]/40 hover:bg-[var(--color-panel-strong)]'
                   }`}
                 >
-                  <p className="font-bold">{option.label}</p>
-                  <p className="mt-2 text-sm text-[var(--color-muted)]">
-                    {option.description}
-                  </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-bold">{option.label}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-8 rounded-full"
+                          style={{
+                            backgroundColor:
+                              option.id === 'DARK'
+                                ? darkThemeColors.dashboardBrandColor
+                                : option.id === 'LIGHT'
+                                  ? lightThemeColors.dashboardBrandColor
+                                  : paletteForm.dashboardBrandColor,
+                          }}
+                        />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-line)]/40" />
+                        <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-line)]/20" />
+                      </div>
+                    </div>
+                    <HelpHint message={option.description} />
+                  </div>
                 </button>
               ))}
             </div>
@@ -234,7 +348,10 @@ export function AppearanceWorkspace() {
 
           <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-3">
-              <p className="text-sm font-semibold">Icono del usuario</p>
+              <SectionHeading
+                title="Icono del usuario"
+                help="Se muestra en tu encabezado, perfil y elementos asociados a tu sesion."
+              />
               <div className="grid gap-4 md:grid-cols-2">
                 {userIconOptions.map((option) => {
                   const Icon = option.icon;
@@ -247,20 +364,18 @@ export function AppearanceWorkspace() {
                       onClick={() => setUserIcon(option.id)}
                       className={`rounded-[var(--radius-card)] border p-4 text-left transition ${
                         active
-                          ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)]'
-                          : 'border-[var(--color-line)] bg-white'
+                          ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)] shadow-[0_12px_24px_rgba(0,0,0,0.06)]'
+                          : 'border-[var(--color-line)] bg-[var(--color-panel)] hover:border-[var(--color-brand)]/40 hover:bg-[var(--color-panel-strong)]'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-[var(--radius-control)] bg-[var(--color-panel)] p-3 text-[var(--color-brand-deep)]">
-                          <Icon className="h-5 w-5" />
-                        </div>
-                        <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-[var(--radius-control)] bg-[var(--color-panel-strong)] p-3 text-[var(--color-brand-deep)]">
+                            <Icon className="h-5 w-5" />
+                          </div>
                           <p className="font-bold">{option.label}</p>
-                          <p className="text-sm text-[var(--color-muted)]">
-                            {option.description}
-                          </p>
                         </div>
+                        <HelpHint message={option.description} />
                       </div>
                     </button>
                   );
@@ -268,24 +383,30 @@ export function AppearanceWorkspace() {
               </div>
             </div>
 
-            <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-white p-5">
-              <div className="flex items-center gap-3">
-                <div className="rounded-full bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
-                  <UserIcon iconId={userIcon} className="h-5 w-5" />
+            <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel)] p-5 shadow-[0_16px_30px_rgba(0,0,0,0.04)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                    <UserIcon iconId={userIcon} className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold">Vista previa del perfil</p>
+                    <p className="mt-1 text-sm text-[var(--color-muted)]">
+                      Icono y acentos activos
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-bold">Vista previa del perfil</p>
-                  <p className="text-sm text-[var(--color-muted)]">
-                    El icono y los colores se aplican solo a tu sesion.
-                  </p>
-                </div>
+                <HelpHint message="Vista rapida del estilo activo antes de guardar los cambios." />
               </div>
 
-              <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel)] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                  Base del tema personalizado
-                </p>
-                <div className="mt-3 flex gap-3">
+              <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--color-line)]/70 bg-[var(--color-panel-strong)] p-5">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                    Base del tema personalizado
+                  </p>
+                  <HelpHint message="Define si la paleta manual parte de un esquema claro u oscuro." />
+                </div>
+                <div className="mt-4 flex gap-3">
                   {(['LIGHT', 'DARK'] as ThemeBasePreset[]).map((base) => (
                     <button
                       key={base}
@@ -303,30 +424,65 @@ export function AppearanceWorkspace() {
                       className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                         customThemeBase === base
                           ? 'bg-[var(--color-brand)] text-white'
-                          : 'border border-[var(--color-line)] bg-white text-[var(--color-brand-deep)]'
+                          : 'border border-[var(--color-line)] bg-[var(--color-panel)] text-[var(--color-brand-deep)] hover:border-[var(--color-brand)]/40'
                       }`}
                     >
                       {base === 'LIGHT' ? 'Claro' : 'Oscuro'}
                     </button>
                   ))}
                 </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)]/60 bg-[var(--color-panel)] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      Superficie
+                    </p>
+                    <div
+                      className="mt-3 h-8 rounded-[12px] border border-[var(--color-line)]/40"
+                      style={{ backgroundColor: paletteForm.dashboardPanelColor }}
+                    />
+                  </div>
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)]/60 bg-[var(--color-panel)] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      Marca
+                    </p>
+                    <div
+                      className="mt-3 h-8 rounded-[12px]"
+                      style={{ backgroundColor: paletteForm.dashboardBrandColor }}
+                    />
+                  </div>
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)]/60 bg-[var(--color-panel)] px-4 py-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                      Texto
+                    </p>
+                    <div
+                      className="mt-3 flex h-8 items-center rounded-[12px] px-3 text-sm font-semibold"
+                      style={{
+                        backgroundColor: paletteForm.dashboardSurfaceColor,
+                        color: paletteForm.dashboardInkColor,
+                      }}
+                    >
+                      Aa
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold">Paleta manual</p>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Si modificas colores, se conserva la base clara u oscura para que
-                el resultado siga coherente.
-              </p>
-            </div>
+            <SectionHeading
+              title="Paleta manual"
+              help="Ajusta cada color del sistema. Cualquier cambio convierte el tema actual en personalizado."
+            />
             <div className="grid gap-4 md:grid-cols-2">
               {paletteFields.map((field) => (
                 <label key={field.key} className="space-y-2 text-sm">
-                  <span className="font-semibold">{field.label}</span>
-                  <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
+                  <span className="flex items-center gap-2 font-semibold">
+                    {field.label}
+                    <HelpHint message={field.help} />
+                  </span>
+                  <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel)] px-4 py-3 transition hover:border-[var(--color-brand)]/40">
                     <input
                       type="color"
                       value={paletteForm[field.key]}
@@ -351,7 +507,7 @@ export function AppearanceWorkspace() {
           {error ? <p className="text-sm text-[var(--color-danger)]">{error}</p> : null}
           {message ? <p className="text-sm text-[var(--color-success)]">{message}</p> : null}
 
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 border-t border-[var(--color-line)]/20 pt-2">
             <button
               type="submit"
               disabled={updateAppearanceMutation.isPending || loading}
@@ -369,7 +525,7 @@ export function AppearanceWorkspace() {
                 setMessage(null);
                 setError(null);
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-panel)] px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)] hover:border-[var(--color-brand)]/40"
             >
               <RefreshCcw className="h-4 w-4" />
               Restaurar
@@ -377,35 +533,33 @@ export function AppearanceWorkspace() {
           </div>
         </form>
       </SectionCard>
-
-      <SectionCard
-        title="Alcance"
-        subtitle="Lo que si entra en esta configuracion."
-      >
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold">
-              <SlidersHorizontal className="h-4 w-4 text-[var(--color-brand)]" />
-              Tema e interfaz
-            </p>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Tema claro, oscuro o manual con vista previa inmediata.
-            </p>
-          </div>
-          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
-            <p className="text-sm font-semibold">Identidad personal</p>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Icono del usuario y acentos visuales de tu panel.
-            </p>
-          </div>
-          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
-            <p className="text-sm font-semibold">Solo tu sesion</p>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              No cambia ni la plataforma completa ni el perfil de otros usuarios.
-            </p>
-          </div>
-        </div>
-      </SectionCard>
     </div>
+  );
+}
+
+export function AppearanceWorkspace() {
+  const {
+    settings,
+    loading,
+    refreshSettings,
+    applyPreview,
+    resetPreview,
+    defaults,
+  } = useSettings();
+
+  const editorKey = settings
+    ? `${settings.updatedAt}-${settings.themePreset}-${settings.userIcon}`
+    : 'appearance-defaults';
+
+  return (
+    <AppearanceWorkspaceForm
+      key={editorKey}
+      settings={settings}
+      loading={loading}
+      refreshSettings={refreshSettings}
+      applyPreview={applyPreview}
+      resetPreview={resetPreview}
+      defaults={defaults}
+    />
   );
 }
