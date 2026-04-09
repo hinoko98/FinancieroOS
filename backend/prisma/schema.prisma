@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  ANALYST
+  OPERATOR
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  ACTIVATE
+  DEACTIVATE
+  LOGIN
+}
+
+enum ThemePreset {
+  LIGHT
+  DARK
+  CUSTOM
+}
+
+enum ThemeBasePreset {
+  LIGHT
+  DARK
+}
+
+enum EntitySharePermission {
+  VIEW
+  EDIT
+  MANAGE
+}
+
+model User {
+  id                   String                 @id @default(uuid())
+  username             String                 @unique
+  email                String?                @unique
+  passwordHash         String
+  firstName            String
+  lastName             String
+  fullName             String
+  nationalId           String                 @unique
+  birthDate            DateTime               @db.Date
+  role                 UserRole               @default(OPERATOR)
+  status               RecordStatus           @default(ACTIVE)
+  lastLoginAt          DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  trackingEntities     TrackingEntity[]       @relation("TrackingEntityOwner")
+  trackingItemsCreated TrackingEntityItem[]   @relation("TrackingEntityItemCreatedBy")
+  trackingRecordsMade  TrackingEntityRecord[] @relation("TrackingEntityRecordPerformedBy")
+  entityAllocations    TrackingEntityAllocation[] @relation("TrackingEntityAllocationPerformedBy")
+  entitySharesReceived TrackingEntityShare[]  @relation("TrackingEntityShareUser")
+  entitySharesGranted  TrackingEntityShare[]  @relation("TrackingEntityShareGrantedBy")
+  settings             UserSetting?
+  loginHistory         LoginHistory[]
+  auditLogs            AuditLog[]
+
+  @@index([role, status])
+}
+
+model TrackingEntity {
+  id             String               @id @default(uuid())
+  ownerId        String
+  name           String
+  normalizedName String
+  description    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  owner          User                 @relation("TrackingEntityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  items          TrackingEntityItem[]
+  allocations    TrackingEntityAllocation[]
+  shares         TrackingEntityShare[]
+
+  @@unique([ownerId, normalizedName])
+  @@index([ownerId, createdAt])
+}
+
+model TrackingEntityItem {
+  id             String                 @id @default(uuid())
+  entityId       String
+  name           String
+  normalizedName String
+  description    String?
+  paymentReference String?
+  createdById    String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  entity         TrackingEntity         @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  createdBy      User?                  @relation("TrackingEntityItemCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  records        TrackingEntityRecord[]
+
+  @@unique([entityId, normalizedName])
+  @@index([entityId, createdAt])
+}
+
+model TrackingEntityRecord {
+  id            String             @id @default(uuid())
+  itemId        String
+  amount        Decimal            @db.Decimal(18, 2)
+  occurredAt    DateTime
+  notes         String?
+  performedById String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  item          TrackingEntityItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  performedBy   User               @relation("TrackingEntityRecordPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([itemId, occurredAt])
+  @@index([performedById, occurredAt])
+}
+
+model TrackingEntityAllocation {
+  id            String         @id @default(uuid())
+  entityId      String
+  amount        Decimal        @db.Decimal(18, 2)
+  sourceLabel   String?
+  occurredAt    DateTime
+  performedById String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  entity        TrackingEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  performedBy   User           @relation("TrackingEntityAllocationPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([entityId, occurredAt])
+  @@index([performedById, occurredAt])
+}
+
+model TrackingEntityShare {
+  id          String                @id @default(uuid())
+  entityId    String
+  userId      String
+  grantedById String
+  permission  EntitySharePermission @default(VIEW)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  entity      TrackingEntity        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  user        User                  @relation("TrackingEntityShareUser", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy   User                  @relation("TrackingEntityShareGrantedBy", fields: [grantedById], references: [id], onDelete: Restrict)
+
+  @@unique([entityId, userId])
+  @@index([userId, createdAt])
+  @@index([entityId, createdAt])
+}
+
+model UserSetting {
+  id                        String      @id @default(uuid())
+  userId                    String      @unique
+  themePreset               ThemePreset @default(LIGHT)
+  customThemeBase           ThemeBasePreset @default(LIGHT)
+  userIcon                  String      @default("user-round")
+  dashboardSurfaceColor     String      @default("#eadfce")
+  dashboardPanelColor       String      @default("#faf4eb")
+  dashboardPanelStrongColor String      @default("#fffaf4")
+  dashboardInkColor         String      @default("#3e2c23")
+  dashboardMutedColor       String      @default("#7a6558")
+  dashboardLineColor        String      @default("#70543e")
+  dashboardBrandColor       String      @default("#6f4e37")
+  dashboardBrandSoftColor   String      @default("#ead7c3")
+  dashboardBrandDeepColor   String      @default("#4f3527")
+  dashboardSuccessColor     String      @default("#1f7a45")
+  dashboardDangerColor      String      @default("#a63f2e")
+  dashboardWarningColor     String      @default("#9a6a1f")
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+  user                      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PlatformSetting {
+  id             String   @id @default("default")
+  platformName   String   @default("Control Financiero")
+  platformLabel  String   @default("Finance OS")
+  platformMotto  String   @default("Entidades, servicios y pagos organizados")
+  timezone       String   @default("America/Bogota")
+  currencyCode   String   @default("COP")
+  supportEmail   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model LoginHistory {
+  id               String   @id @default(uuid())
+  userId           String
+  usernameSnapshot String
+  ipAddress        String?
+  userAgent        String?
+  loggedInAt       DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedInAt])
+}
+
+model AuditLog {
+  id            String      @id @default(uuid())
+  entityName    String
+  entityId      String
+  action        AuditAction
+  summary       String
+  before        Json?
+  after         Json?
+  metadata      Json?
+  performedById String?
+  createdAt     DateTime    @default(now())
+  performedBy   User?       @relation(fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([entityName, entityId, createdAt])
+}
