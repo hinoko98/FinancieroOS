@@ -6,7 +6,6 @@ Base inicial de un sistema web nuevo para control financiero integral y operativ
 
 - `backend`: API Express + Prisma + PostgreSQL
 - `frontend`: App web Next.js + TypeScript + Tailwind
-- `docs/system-design.md`: arquitectura, Prisma, endpoints, DTOs, flujos y roadmap
 - `docker-compose.yml`: PostgreSQL local
 
 ## Inicio rapido
