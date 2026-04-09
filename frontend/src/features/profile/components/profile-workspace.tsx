@@ -190,7 +190,7 @@ export function ProfileWorkspace() {
                     firstName: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -205,7 +205,7 @@ export function ProfileWorkspace() {
                     lastName: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -223,7 +223,7 @@ export function ProfileWorkspace() {
                     birthDate: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -233,7 +233,7 @@ export function ProfileWorkspace() {
               <input
                 value={profileQuery.data?.username ?? user?.username ?? ''}
                 readOnly
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
 
@@ -242,7 +242,7 @@ export function ProfileWorkspace() {
               <input
                 value={profileQuery.data?.role ?? user?.role ?? ''}
                 readOnly
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
 
@@ -251,7 +251,7 @@ export function ProfileWorkspace() {
               <input
                 value={profileQuery.data?.nationalId ?? ''}
                 readOnly
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
           </div>
@@ -262,7 +262,7 @@ export function ProfileWorkspace() {
               <input
                 value={formatDate(profileQuery.data?.createdAt ?? null)}
                 readOnly
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
 
@@ -271,7 +271,7 @@ export function ProfileWorkspace() {
               <input
                 value={formatDate(profileQuery.data?.lastLoginAt ?? null)}
                 readOnly
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
           </div>
@@ -320,7 +320,7 @@ export function ProfileWorkspace() {
                     currentPassword: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -336,7 +336,7 @@ export function ProfileWorkspace() {
                     newPassword: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 minLength={8}
                 required
               />
@@ -373,7 +373,7 @@ export function ProfileWorkspace() {
           {loginHistoryQuery.data?.map((entry) => (
             <div
               key={entry.id}
-              className="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+              className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4"
             >
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">

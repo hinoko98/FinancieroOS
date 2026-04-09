@@ -545,7 +545,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
             </p>
           ) : null}
           {!entity.canEdit ? (
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm text-[var(--color-muted)]">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm text-[var(--color-muted)]">
               Tienes acceso de solo lectura. Puedes revisar servicios, historial y
               movimientos, pero no crear ni editar registros.
             </div>
@@ -596,23 +596,23 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-4">
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Servicios activos</p>
           <p className="mt-3 text-3xl font-bold">{entity.itemsCount}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Dinero asignado</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-brand-deep)]">
             {formatCurrency(entity.assignedAmount)}
           </p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Valor total gastado</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-success)]">
             {formatCurrency(entity.spentAmount)}
           </p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Saldo disponible</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-brand)]">
             {formatCurrency(entity.availableBalance)}
@@ -633,7 +633,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               }
             >
               <div className="space-y-5">
-                <div className="flex flex-col gap-3 rounded-[24px] border border-[var(--color-line)] bg-white p-5 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-white p-5 md:flex-row md:items-center md:justify-between">
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div>
                       <p className="text-sm text-[var(--color-muted)]">Pagos</p>
@@ -687,12 +687,12 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                       .map((record) => (
                       <article
                         key={record.id}
-                        className="rounded-2xl border border-[var(--color-line)] bg-white p-4"
+                        className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4"
                       >
                         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <div>
                             <div className="flex items-center gap-3">
-                              <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                              <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                                 <ReceiptText className="h-4 w-4" />
                               </div>
                               <div>
@@ -720,7 +720,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                       </article>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4 text-sm text-[var(--color-muted)]">
+                    <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4 text-sm text-[var(--color-muted)]">
                       Aun no hay pagos registrados para este servicio.
                     </div>
                   )}
@@ -734,7 +734,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           title="Sin servicios"
           subtitle="Empieza agregando el primer servicio de esta entidad."
         >
-          <div className="flex flex-col gap-4 rounded-[24px] border border-dashed border-[var(--color-line)] bg-white p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-dashed border-[var(--color-line)] bg-white p-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h3 className="text-lg font-bold">Agrega el primer servicio</h3>
               <p className="mt-2 text-sm text-[var(--color-muted)]">
@@ -763,7 +763,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         onClose={() => setServiceModalOpen(false)}
       >
         <form className="grid gap-4" onSubmit={submitService}>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
             <span className="font-semibold">Entidad:</span> {entity.name}
           </div>
 
@@ -774,7 +774,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               onChange={(event) =>
                 setServiceForm((current) => ({ ...current, name: event.target.value }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Energia local principal"
               required
             />
@@ -790,7 +790,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                   paymentReference: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="1643973"
             />
           </label>
@@ -817,7 +817,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         onClose={() => setPaymentModalOpen(false)}
       >
         <form className="grid gap-4" onSubmit={submitPayment}>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
             <span className="font-semibold">Servicio:</span> {paymentForm.itemName}
           </div>
 
@@ -835,7 +835,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     amount: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="185000"
                 required
               />
@@ -852,7 +852,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     occurredAt: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               />
             </label>
           </div>
@@ -862,7 +862,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
             <input
               value={user?.fullName ?? ''}
               readOnly
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
             />
           </label>
 
@@ -888,7 +888,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         onClose={() => setAllocationModalOpen(false)}
       >
         <form className="grid gap-4" onSubmit={submitAllocation}>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
             <span className="font-semibold">Entidad:</span> {entity.name}
           </div>
 
@@ -906,7 +906,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     amount: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="1000000"
                 required
               />
@@ -923,7 +923,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     occurredAt: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               />
             </label>
           </div>
@@ -938,7 +938,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                   sourceLabel: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Retiro BBVA marzo"
             />
           </label>
@@ -970,17 +970,17 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       >
         <div className="space-y-4">
           <div className="grid gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Referencia</p>
               <p className="mt-2 text-lg font-bold">
                 {selectedService?.paymentReference ?? 'Sin referencia'}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Pagos realizados</p>
               <p className="mt-2 text-lg font-bold">{selectedService?.recordsCount ?? 0}</p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Total pagado</p>
               <p className="mt-2 text-lg font-bold text-[var(--color-success)]">
                 {formatCurrency(selectedService?.totalValue ?? 0)}
@@ -989,7 +989,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           </div>
 
           {serviceHistoryRecords.length ? (
-            <div className="overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-left">
                   <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
@@ -1034,7 +1034,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 text-sm text-[var(--color-muted)]">
+            <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 text-sm text-[var(--color-muted)]">
               Este servicio aun no tiene pagos registrados.
             </div>
           )}
@@ -1051,7 +1051,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <label className="space-y-2 text-sm xl:col-span-2">
               <span className="font-semibold">Buscar</span>
-              <div className="flex items-center gap-2 rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3">
+              <div className="flex items-center gap-2 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
                 <Search className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
                   value={historyFilters.search}
@@ -1077,7 +1077,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     range: event.target.value as HistoryRange,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 <option value="all">Todo</option>
                 <option value="1m">Ultimo mes</option>
@@ -1097,7 +1097,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     movementType: event.target.value as HistoryMovementType,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 <option value="all">Todos</option>
                 <option value="allocation">Asignaciones</option>
@@ -1115,7 +1115,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     serviceId: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 <option value="all">Todos</option>
                 {entity.items.map((item) => (
@@ -1138,7 +1138,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     performedById: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 <option value="all">Todos</option>
                 {historyResponsibleOptions.map((responsible) => (
@@ -1149,19 +1149,19 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               </select>
             </label>
 
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Asignado filtrado</p>
               <p className="mt-2 text-lg font-bold text-[var(--color-brand-deep)]">
                 {formatCurrency(historyStats.creditAmount)}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Pagado filtrado</p>
               <p className="mt-2 text-lg font-bold text-[var(--color-success)]">
                 {formatCurrency(historyStats.debitAmount)}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
               <p className="text-sm text-[var(--color-muted)]">Saldo actual</p>
               <p className="mt-2 text-lg font-bold text-[var(--color-brand)]">
                 {formatCurrency(entity.availableBalance)}
@@ -1170,7 +1170,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           </div>
 
           {filteredHistoryEntries.length ? (
-            <div className="overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+            <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
               <div className="overflow-x-auto">
                 <table className="min-w-full border-collapse text-left">
                   <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
@@ -1257,7 +1257,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 text-sm text-[var(--color-muted)]">
+            <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 text-sm text-[var(--color-muted)]">
               No hay movimientos para los filtros aplicados. Este historial separa
               asignaciones y pagos para seguir el saldo disponible.
             </div>
@@ -1279,7 +1279,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         }}
       >
         <form className="grid gap-4" onSubmit={submitMovementUpdate}>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm">
             <span className="font-semibold">Movimiento:</span>{' '}
             {editingMovement?.label ?? 'Sin detalle'}
           </div>
@@ -1298,7 +1298,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     amount: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -1314,7 +1314,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     occurredAt: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>
@@ -1331,7 +1331,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                     sourceLabel: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="Retiro o fuente del dinero"
               />
             </label>

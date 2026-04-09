@@ -113,7 +113,7 @@ export function EntitiesWorkspace() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Resumen de entidades</h2>
-          <div className="flex max-w-3xl items-start gap-3 rounded-[24px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-muted)] sm:text-base">
+          <div className="flex max-w-3xl items-start gap-3 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-6 text-[var(--color-muted)] sm:text-base">
             <div className="rounded-full bg-[var(--color-brand-soft)] p-2 text-[var(--color-brand-deep)]">
               <CircleHelp className="h-4 w-4" />
             </div>
@@ -139,21 +139,21 @@ export function EntitiesWorkspace() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-4">
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Entidades activas</p>
           <p className="mt-3 text-3xl font-bold">{summary.entitiesCount}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Servicios registrados</p>
           <p className="mt-3 text-3xl font-bold">{summary.itemsCount}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Dinero asignado</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-brand-deep)]">
             {formatCurrency(summary.totalAssigned)}
           </p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Saldo disponible</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-brand)]">
             {formatCurrency(summary.totalAvailable)}
@@ -162,7 +162,7 @@ export function EntitiesWorkspace() {
       </div>
 
       {sharedEntitiesCount ? (
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-5 py-4 text-sm text-[var(--color-muted)]">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-5 py-4 text-sm text-[var(--color-muted)]">
           Tienes {sharedEntitiesCount} {sharedEntitiesCount === 1 ? 'entidad compartida' : 'entidades compartidas'}.
           {' '}
           <Link
@@ -179,7 +179,7 @@ export function EntitiesWorkspace() {
         subtitle="Consulta servicios, fondos asignados, pagos y saldo de las entidades que administras."
       >
         {ownedEntities.length ? (
-          <div className="overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-left">
                 <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
@@ -247,9 +247,9 @@ export function EntitiesWorkspace() {
             </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 rounded-[24px] border border-dashed border-[var(--color-line)] bg-white p-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-4 rounded-[var(--radius-card)] border border-dashed border-[var(--color-line)] bg-white p-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+              <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                 <Building2 className="h-5 w-5" />
               </div>
               <div>
@@ -294,7 +294,7 @@ export function EntitiesWorkspace() {
               onChange={(event) =>
                 setEntityForm((current) => ({ ...current, name: event.target.value }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Recibos casa principal"
               required
             />
@@ -310,7 +310,7 @@ export function EntitiesWorkspace() {
                   description: event.target.value,
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="min-h-28 w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Ejemplo: pagos y compras de la obra principal"
             />
           </label>

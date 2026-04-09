@@ -77,7 +77,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, hydrated, logout } = useAuth();
   const { settings } = useSettings();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const entitiesQuery = useQuery({
@@ -107,37 +108,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [hydrated, router, user]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const mediaQuery = window.matchMedia('(min-width: 1280px)');
-    const syncSidebarState = (event?: MediaQueryListEvent) => {
-      setSidebarOpen(event ? event.matches : mediaQuery.matches);
-    };
-
-    syncSidebarState();
-    mediaQuery.addEventListener('change', syncSidebarState);
-
-    return () => {
-      mediaQuery.removeEventListener('change', syncSidebarState);
-    };
-  }, []);
-
-  useEffect(() => {
     if (typeof document === 'undefined' || typeof window === 'undefined') {
       return;
     }
 
     const shouldLockScroll =
-      sidebarOpen && !window.matchMedia('(min-width: 1280px)').matches;
+      mobileSidebarOpen && !window.matchMedia('(min-width: 1280px)').matches;
 
     document.body.style.overflow = shouldLockScroll ? 'hidden' : '';
 
     return () => {
       document.body.style.overflow = '';
     };
-  }, [sidebarOpen]);
+  }, [mobileSidebarOpen]);
 
   const authDisplayName = useMemo(() => user?.fullName ?? '', [user?.fullName]);
 
@@ -156,57 +139,120 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       typeof window !== 'undefined' &&
       !window.matchMedia('(min-width: 1280px)').matches
     ) {
-      setSidebarOpen(false);
+      setMobileSidebarOpen(false);
     }
+  };
+
+  const toggleSidebar = () => {
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia('(min-width: 1280px)').matches
+    ) {
+      setSidebarExpanded((current) => !current);
+      return;
+    }
+
+    setMobileSidebarOpen((current) => !current);
   };
 
   return (
     <div
       className={cn(
         'grid min-h-screen w-full gap-4 px-3 py-3 sm:gap-5 sm:px-4 sm:py-4 xl:gap-6 xl:px-6 xl:py-5 2xl:px-8',
-        sidebarOpen
+        sidebarExpanded
           ? 'xl:grid-cols-[300px_minmax(0,1fr)] 2xl:grid-cols-[320px_minmax(0,1fr)]'
-          : 'xl:grid-cols-[minmax(0,1fr)]',
+          : 'xl:grid-cols-[92px_minmax(0,1fr)]',
       )}
     >
       <div
         aria-hidden="true"
-        onClick={() => setSidebarOpen(false)}
+        onClick={() => setMobileSidebarOpen(false)}
         className={cn(
           'fixed inset-0 z-30 bg-[rgba(33,20,13,0.34)] backdrop-blur-[2px] transition xl:hidden',
-          sidebarOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0',
+          mobileSidebarOpen
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0',
         )}
       />
 
       <aside
         id="app-shell-sidebar"
         className={cn(
-          'fixed inset-y-3 left-3 z-40 flex w-[min(21rem,calc(100vw-1.5rem))] flex-col rounded-[var(--radius-shell)] border border-[var(--color-line)] bg-[linear-gradient(180deg,var(--color-brand),var(--color-brand-deep))] p-5 text-[#fff8f1] shadow-[var(--shadow-panel)] transition-all duration-300 sm:p-6 xl:sticky xl:top-5 xl:left-auto xl:z-auto xl:w-auto xl:self-start xl:overflow-y-auto 2xl:top-6',
-          sidebarOpen
-            ? 'translate-x-0 opacity-100 xl:h-[calc(100vh-2.5rem)] 2xl:h-[calc(100vh-3rem)]'
-            : '-translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none xl:hidden',
+          'fixed inset-y-3 left-3 z-40 flex w-[min(21rem,calc(100vw-1.5rem))] flex-col rounded-[var(--radius-shell)] border border-[var(--color-line)] bg-[linear-gradient(180deg,var(--color-brand),var(--color-brand-deep))] p-5 text-[#fff8f1] shadow-[var(--shadow-panel)] transition-all duration-300 sm:p-6 xl:sticky xl:top-5 xl:left-auto xl:z-auto xl:w-auto xl:self-start xl:translate-x-0 xl:opacity-100 xl:pointer-events-auto xl:overflow-y-auto 2xl:top-6',
+          mobileSidebarOpen
+            ? 'translate-x-0 opacity-100'
+            : '-translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none',
+          sidebarExpanded
+            ? 'xl:h-[calc(100vh-2.5rem)] 2xl:h-[calc(100vh-3rem)]'
+            : 'xl:h-[calc(100vh-2.5rem)] xl:px-3 xl:py-4 2xl:h-[calc(100vh-3rem)]',
         )}
       >
-        <div className="mb-8 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.34em] text-[#f3dcc6]/80">
+        <div
+          className={cn(
+            'mb-8 flex items-start justify-between gap-4',
+            !sidebarExpanded && 'xl:mb-6 xl:flex-col xl:items-center xl:gap-3',
+          )}
+        >
+          <div className={cn(!sidebarExpanded && 'xl:text-center')}>
+            <p
+              className={cn(
+                'text-xs uppercase tracking-[0.34em] text-[#f3dcc6]/80',
+                !sidebarExpanded && 'xl:hidden',
+              )}
+            >
               {platformLabel}
             </p>
-            <h2 className="mt-3 text-2xl font-bold tracking-tight">{platformName}</h2>
-            <p className="mt-2 text-sm text-[#f8e8d7]/70">{platformMotto}</p>
+            <div
+              className={cn(
+                'mt-3',
+                !sidebarExpanded && 'xl:mt-0 xl:flex xl:justify-center',
+              )}
+            >
+              <div className="rounded-[var(--radius-control)] border border-white/14 bg-white/10 px-3 py-2 text-center">
+                <p
+                  className={cn(
+                    'text-2xl font-bold tracking-tight',
+                    !sidebarExpanded && 'xl:hidden',
+                  )}
+                >
+                  {platformName}
+                </p>
+                <p
+                  className={cn(
+                    'hidden text-lg font-bold tracking-[0.18em] xl:block',
+                    sidebarExpanded && 'xl:hidden',
+                  )}
+                >
+                  FOS
+                </p>
+              </div>
+            </div>
+            <p
+              className={cn(
+                'mt-2 text-sm text-[#f8e8d7]/70',
+                !sidebarExpanded && 'xl:hidden',
+              )}
+            >
+              {platformMotto}
+            </p>
           </div>
 
           <button
             type="button"
-            onClick={() => setSidebarOpen(false)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/18 text-[#fff8f1] transition hover:bg-white/10 xl:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-white/18 text-[#fff8f1] transition hover:bg-white/10 xl:hidden"
             aria-label="Cerrar menu principal"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <nav className="space-y-3">
+        <nav
+          className={cn(
+            'space-y-3',
+            !sidebarExpanded && 'xl:flex xl:flex-1 xl:flex-col xl:items-center',
+          )}
+        >
           {links.map((link) => {
             const Icon = link.icon;
             const active =
@@ -219,18 +265,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   href={link.href}
                   onClick={closeSidebarOnMobile}
+                  title={!sidebarExpanded ? link.label : undefined}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-[var(--radius-control)] px-4 py-3 text-sm font-semibold transition',
+                    !sidebarExpanded && 'xl:w-14 xl:justify-center xl:px-0',
                     active
                       ? 'bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)] shadow-sm'
                       : 'text-[#f7ede1] hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand-deep)]',
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  <span className="flex-1">{link.label}</span>
+                  <span className={cn('flex-1', !sidebarExpanded && 'xl:hidden')}>
+                    {link.label}
+                  </span>
                 </Link>
 
-                {link.href === '/entidades' && entitiesQuery.data?.length ? (
+                {link.href === '/entidades' &&
+                sidebarExpanded &&
+                entitiesQuery.data?.length ? (
                   <div className="space-y-1 pl-3">
                     {entitiesQuery.data.map((entity) => {
                       const entityActive = pathname === `/entidades/${entity.id}`;
@@ -264,13 +316,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-start gap-3">
             <button
               type="button"
-              onClick={() => setSidebarOpen((current) => !current)}
-              aria-expanded={sidebarOpen}
+              onClick={toggleSidebar}
+              aria-expanded={sidebarExpanded || mobileSidebarOpen}
               aria-controls="app-shell-sidebar"
-              aria-label={sidebarOpen ? 'Ocultar menu principal' : 'Mostrar menu principal'}
-              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-panel-strong)] text-[var(--color-brand-deep)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-soft)]"
+              aria-label={
+                sidebarExpanded || mobileSidebarOpen
+                  ? 'Ocultar menu principal'
+                  : 'Mostrar menu principal'
+              }
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] text-[var(--color-brand-deep)] transition hover:border-[var(--color-brand)] hover:bg-[var(--color-brand-soft)]"
             >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {sidebarExpanded || mobileSidebarOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </button>
 
             <div>
@@ -287,9 +347,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={() => setProfileMenuOpen((current) => !current)}
-              className="flex items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-2 transition hover:border-[var(--color-brand)]"
+              className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-2 transition hover:border-[var(--color-brand)]"
             >
-              <div className="rounded-full bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+              <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                 <UserIcon iconId={settings?.userIcon} className="h-5 w-5" />
               </div>
               <div className="min-w-0 text-left">

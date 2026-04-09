@@ -204,7 +204,7 @@ export function AppearanceWorkspace() {
             updateAppearanceMutation.mutate();
           }}
         >
-          <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5 text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5 text-sm text-[var(--color-muted)]">
             Aqui ajustas tema, icono y paleta personal. No modifica nombre,
             contrasena ni configuracion global de la plataforma.
           </div>
@@ -217,7 +217,7 @@ export function AppearanceWorkspace() {
                   key={option.id}
                   type="button"
                   onClick={() => selectThemePreset(option.id)}
-                  className={`rounded-[24px] border p-5 text-left transition ${
+                  className={`rounded-[var(--radius-card)] border p-5 text-left transition ${
                     themePreset === option.id
                       ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)]'
                       : 'border-[var(--color-line)] bg-white'
@@ -245,14 +245,14 @@ export function AppearanceWorkspace() {
                       key={option.id}
                       type="button"
                       onClick={() => setUserIcon(option.id)}
-                      className={`rounded-[24px] border p-4 text-left transition ${
+                      className={`rounded-[var(--radius-card)] border p-4 text-left transition ${
                         active
                           ? 'border-[var(--color-brand)] bg-[var(--color-brand-soft)]'
                           : 'border-[var(--color-line)] bg-white'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="rounded-2xl bg-[var(--color-panel)] p-3 text-[var(--color-brand-deep)]">
+                        <div className="rounded-[var(--radius-control)] bg-[var(--color-panel)] p-3 text-[var(--color-brand-deep)]">
                           <Icon className="h-5 w-5" />
                         </div>
                         <div>
@@ -268,7 +268,7 @@ export function AppearanceWorkspace() {
               </div>
             </div>
 
-            <div className="rounded-[24px] border border-[var(--color-line)] bg-white p-5">
+            <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-white p-5">
               <div className="flex items-center gap-3">
                 <div className="rounded-full bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                   <UserIcon iconId={userIcon} className="h-5 w-5" />
@@ -281,7 +281,7 @@ export function AppearanceWorkspace() {
                 </div>
               </div>
 
-              <div className="mt-5 rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel)] p-5">
+              <div className="mt-5 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel)] p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted)]">
                   Base del tema personalizado
                 </p>
@@ -326,7 +326,7 @@ export function AppearanceWorkspace() {
               {paletteFields.map((field) => (
                 <label key={field.key} className="space-y-2 text-sm">
                   <span className="font-semibold">{field.label}</span>
-                  <div className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3">
+                  <div className="flex items-center gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
                     <input
                       type="color"
                       value={paletteForm[field.key]}
@@ -383,7 +383,7 @@ export function AppearanceWorkspace() {
         subtitle="Lo que si entra en esta configuracion."
       >
         <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
             <p className="inline-flex items-center gap-2 text-sm font-semibold">
               <SlidersHorizontal className="h-4 w-4 text-[var(--color-brand)]" />
               Tema e interfaz
@@ -392,13 +392,13 @@ export function AppearanceWorkspace() {
               Tema claro, oscuro o manual con vista previa inmediata.
             </p>
           </div>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
             <p className="text-sm font-semibold">Identidad personal</p>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               Icono del usuario y acentos visuales de tu panel.
             </p>
           </div>
-          <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
             <p className="text-sm font-semibold">Solo tu sesion</p>
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               No cambia ni la plataforma completa ni el perfil de otros usuarios.

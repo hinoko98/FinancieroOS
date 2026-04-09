@@ -40,14 +40,14 @@ export function CreateAccountForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="grid gap-4 rounded-[28px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6"
+      className="grid gap-4 rounded-[var(--radius-panel)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6"
     >
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-2 text-sm">
           <span className="font-semibold">Nombre de la cuenta</span>
           <input
             {...register('name')}
-            className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none ring-0"
+            className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none ring-0"
             placeholder="Ej. Banco principal"
           />
           {errors.name && <p className="text-xs text-rose-700">{errors.name.message}</p>}
@@ -57,7 +57,7 @@ export function CreateAccountForm() {
           <span className="font-semibold">Tipo</span>
           <select
             {...register('type')}
-            className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+            className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
           >
             {accountTypes.map((type) => (
               <option key={type.value} value={type.value}>
@@ -75,7 +75,7 @@ export function CreateAccountForm() {
             type="number"
             step="0.01"
             {...register('initialBalance')}
-            className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+            className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
           />
           {errors.initialBalance && (
             <p className="text-xs text-rose-700">{errors.initialBalance.message}</p>
@@ -86,7 +86,7 @@ export function CreateAccountForm() {
           <span className="font-semibold">Moneda</span>
           <input
             {...register('currency')}
-            className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 uppercase outline-none"
+            className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 uppercase outline-none"
           />
         </label>
       </div>
@@ -96,7 +96,7 @@ export function CreateAccountForm() {
         <textarea
           {...register('description')}
           rows={4}
-          className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+          className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
           placeholder="Notas operativas, banco, responsable o uso principal."
         />
       </label>

@@ -13,12 +13,12 @@
   --color-success: #1f7a45;
   --color-danger: #a63f2e;
   --color-warning: #9a6a1f;
-  --radius-shell: 36px;
-  --radius-panel: 30px;
-  --radius-card: 24px;
-  --radius-control: 20px;
-  --radius-popover: 28px;
-  --shadow-panel: 0 24px 60px rgba(79, 53, 39, 0.1);
+  --radius-shell: 22px;
+  --radius-panel: 18px;
+  --radius-card: 16px;
+  --radius-control: 14px;
+  --radius-popover: 16px;
+  --shadow-panel: 0 18px 42px rgba(79, 53, 39, 0.1);
 }
 
 @theme inline {

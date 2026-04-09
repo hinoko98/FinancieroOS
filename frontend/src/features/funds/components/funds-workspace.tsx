@@ -27,7 +27,7 @@ export function FundsWorkspace() {
                 </p>
                 <p className="mt-2 text-sm text-[var(--color-muted)]">Saldo actual</p>
               </div>
-              <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+              <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                 <PiggyBank className="h-5 w-5" />
               </div>
             </div>
@@ -43,10 +43,10 @@ export function FundsWorkspace() {
           {movements.map((movement, index) => (
             <div
               key={`${movement.origin}-${index}`}
-              className="flex flex-col gap-3 rounded-2xl border border-[var(--color-line)] bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
+              className="flex flex-col gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-4 md:flex-row md:items-center md:justify-between"
             >
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                   {movement.type === 'Entrada' ? (
                     <ArrowDownToLine className="h-4 w-4" />
                   ) : (

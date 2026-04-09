@@ -78,7 +78,7 @@ export function ObligationsWorkspace() {
                     {obligation.pending}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-[rgba(166,63,46,0.10)] p-3 text-[var(--color-danger)]">
+                <div className="rounded-[var(--radius-control)] bg-[rgba(166,63,46,0.10)] p-3 text-[var(--color-danger)]">
                   <ShieldAlert className="h-5 w-5" />
                 </div>
               </div>
@@ -108,7 +108,7 @@ export function ObligationsWorkspace() {
               onChange={(event) =>
                 setForm((current) => ({ ...current, name: event.target.value }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               required
             />
           </label>
@@ -121,7 +121,7 @@ export function ObligationsWorkspace() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, total: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="$ 10.000.000"
                 required
               />
@@ -133,7 +133,7 @@ export function ObligationsWorkspace() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, pending: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="$ 2.000.000"
                 required
               />
@@ -148,7 +148,7 @@ export function ObligationsWorkspace() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, next: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="15 Abr 2026"
                 required
               />
@@ -163,7 +163,7 @@ export function ObligationsWorkspace() {
                 onChange={(event) =>
                   setForm((current) => ({ ...current, progress: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 required
               />
             </label>

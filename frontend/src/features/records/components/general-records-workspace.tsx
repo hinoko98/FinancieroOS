@@ -83,17 +83,17 @@ export function GeneralRecordsWorkspace() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Total gastado</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-success)]">
             {formatCurrency(totalSpent)}
           </p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Cantidad de pagos</p>
           <p className="mt-3 text-3xl font-bold">{records.length}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Mayor gasto</p>
           <p className="mt-3 text-2xl font-bold text-[var(--color-danger)]">
             {highestExpense ? formatCurrency(highestExpense.amount) : formatCurrency(0)}
@@ -111,7 +111,7 @@ export function GeneralRecordsWorkspace() {
         subtitle="Consulta cada pago con su entidad, servicio, fecha, responsable y valor."
       >
         {records.length ? (
-          <div className="overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse text-left">
                 <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
@@ -154,7 +154,7 @@ export function GeneralRecordsWorkspace() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
             Todavia no hay pagos cargados en las entidades.
           </div>
         )}

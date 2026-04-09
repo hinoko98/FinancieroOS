@@ -111,7 +111,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-xl rounded-[32px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-8 shadow-[var(--shadow-panel)]">
+    <div className="w-full max-w-xl rounded-[var(--radius-shell)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-8 shadow-[var(--shadow-panel)]">
       <div className="mb-6 flex gap-2 rounded-full bg-[#f1e7db] p-1">
         <button
           type="button"
@@ -148,7 +148,7 @@ export function LoginForm() {
           <>
             <label className="block space-y-2 text-sm">
               <span className="font-semibold">Usuario</span>
-              <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                 <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
                   value={loginForm.username}
@@ -169,7 +169,7 @@ export function LoginForm() {
 
             <label className="block space-y-2 text-sm">
               <span className="font-semibold">Contrasena</span>
-              <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                 <LockKeyhole className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
                   type={showLoginPassword ? 'text' : 'password'}
@@ -203,7 +203,7 @@ export function LoginForm() {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block space-y-2 text-sm">
                 <span className="font-semibold">Nombre</span>
-                <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+                <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                   <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
                   <input
                     value={registerForm.firstName}
@@ -222,7 +222,7 @@ export function LoginForm() {
 
               <label className="block space-y-2 text-sm">
                 <span className="font-semibold">Apellido</span>
-                <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+                <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                   <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
                   <input
                     value={registerForm.lastName}
@@ -243,7 +243,7 @@ export function LoginForm() {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block space-y-2 text-sm">
                 <span className="font-semibold">Cedula</span>
-                <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+                <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                   <CreditCard className="h-4 w-4 text-[var(--color-muted)]" />
                   <input
                     value={registerForm.nationalId}
@@ -263,7 +263,7 @@ export function LoginForm() {
 
               <label className="block space-y-2 text-sm">
                 <span className="font-semibold">Fecha de nacimiento</span>
-                <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+                <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                   <CalendarDays className="h-4 w-4 text-[var(--color-muted)]" />
                   <input
                     type="date"
@@ -283,7 +283,7 @@ export function LoginForm() {
 
             <label className="block space-y-2 text-sm">
               <span className="font-semibold">Usuario generado automaticamente</span>
-              <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-[#f6efe7] px-4">
+              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[#f6efe7] px-4">
                 <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
                   value={usernamePreview}
@@ -298,7 +298,7 @@ export function LoginForm() {
 
             <label className="block space-y-2 text-sm">
               <span className="font-semibold">Contrasena</span>
-              <div className="flex items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                 <LockKeyhole className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
                   type={showRegisterPassword ? 'text' : 'password'}

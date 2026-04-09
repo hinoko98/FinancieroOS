@@ -115,7 +115,7 @@ export function ServicesWorkspace() {
                 group.services.map((service) => (
                   <div
                     key={service.id}
-                    className="rounded-2xl border border-[var(--color-line)] bg-white p-5"
+                    className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-5"
                   >
                     <div className="flex items-start justify-between">
                       <div>
@@ -124,7 +124,7 @@ export function ServicesWorkspace() {
                           Proximo pago: {service.next}
                         </p>
                       </div>
-                      <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                      <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                         <Landmark className="h-5 w-5" />
                       </div>
                     </div>
@@ -135,7 +135,7 @@ export function ServicesWorkspace() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
+                <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
                   Sin servicios registrados.
                 </div>
               )}
@@ -157,7 +157,7 @@ export function ServicesWorkspace() {
               onChange={(event) =>
                 setGroupForm({ name: event.target.value })
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Casa principal"
               required
             />
@@ -186,7 +186,7 @@ export function ServicesWorkspace() {
               onChange={(event) =>
                 setServiceForm((current) => ({ ...current, groupId: event.target.value }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
             >
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
@@ -204,7 +204,7 @@ export function ServicesWorkspace() {
                 onChange={(event) =>
                   setServiceForm((current) => ({ ...current, name: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="Agua"
                 required
               />
@@ -217,7 +217,7 @@ export function ServicesWorkspace() {
                 onChange={(event) =>
                   setServiceForm((current) => ({ ...current, amount: event.target.value }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 placeholder="$ 120.000"
                 required
               />
@@ -231,7 +231,7 @@ export function ServicesWorkspace() {
               onChange={(event) =>
                 setServiceForm((current) => ({ ...current, next: event.target.value }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="10 Abr 2026"
               required
             />

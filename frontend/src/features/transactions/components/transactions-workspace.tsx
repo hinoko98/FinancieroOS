@@ -53,10 +53,10 @@ export function TransactionsWorkspace() {
           {transactions.map((transaction) => (
             <div
               key={transaction.code}
-              className="grid gap-4 rounded-2xl border border-[var(--color-line)] bg-white px-4 py-4 md:grid-cols-[1.2fr_1fr_0.8fr_auto]"
+              className="grid gap-4 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-4 md:grid-cols-[1.2fr_1fr_0.8fr_auto]"
             >
               <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                   <ArrowLeftRight className="h-4 w-4" />
                 </div>
                 <div>

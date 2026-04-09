@@ -224,15 +224,15 @@ export function SharedEntitiesWorkspace() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Compartidas conmigo</p>
           <p className="mt-3 text-3xl font-bold">{sharedEntities.length}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Entidades gestionables</p>
           <p className="mt-3 text-3xl font-bold">{manageableEntities.length}</p>
         </div>
-        <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+        <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
           <p className="text-sm text-[var(--color-muted)]">Accesos otorgados</p>
           <p className="mt-3 text-3xl font-bold">{grantedAccessesCount}</p>
         </div>
@@ -247,7 +247,7 @@ export function SharedEntitiesWorkspace() {
             {sharedEntities.map((entity) => (
               <article
                 key={entity.id}
-                className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
+                className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
@@ -280,17 +280,17 @@ export function SharedEntitiesWorkspace() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3">
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
                     <p className="text-sm text-[var(--color-muted)]">Servicios</p>
                     <p className="mt-2 text-xl font-bold">{entity.itemsCount}</p>
                   </div>
-                  <div className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3">
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
                     <p className="text-sm text-[var(--color-muted)]">Gastado</p>
                     <p className="mt-2 text-lg font-bold text-[var(--color-success)]">
                       {formatCurrency(entity.spentAmount)}
                     </p>
                   </div>
-                  <div className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3">
+                  <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3">
                     <p className="text-sm text-[var(--color-muted)]">Disponible</p>
                     <p className="mt-2 text-lg font-bold text-[var(--color-brand)]">
                       {formatCurrency(entity.availableBalance)}
@@ -301,7 +301,7 @@ export function SharedEntitiesWorkspace() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
             Todavia no te han compartido entidades.
           </div>
         )}
@@ -316,7 +316,7 @@ export function SharedEntitiesWorkspace() {
             {manageableEntities.map((entity) => (
               <article
                 key={entity.id}
-                className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
+                className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
               >
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="space-y-2">
@@ -359,7 +359,7 @@ export function SharedEntitiesWorkspace() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
             Aun no tienes entidades con permisos para administrar compartidos.
           </div>
         )}
@@ -383,11 +383,11 @@ export function SharedEntitiesWorkspace() {
           <div className="space-y-5">
             <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               <form
-                className="space-y-4 rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
+                className="space-y-4 rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5"
                 onSubmit={submitShare}
               >
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                  <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                     <UserRoundPlus className="h-4 w-4" />
                   </div>
                   <div>
@@ -408,7 +408,7 @@ export function SharedEntitiesWorkspace() {
                         username: event.target.value,
                       }))
                     }
-                    className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                    className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                     placeholder="@admin"
                     required
                   />
@@ -424,7 +424,7 @@ export function SharedEntitiesWorkspace() {
                         permission: event.target.value as EntitySharePermission,
                       }))
                     }
-                    className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                    className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                   >
                     <option value="VIEW">Solo lectura</option>
                     <option value="EDIT">Puede editar</option>
@@ -446,9 +446,9 @@ export function SharedEntitiesWorkspace() {
                 </button>
               </form>
 
-              <div className="rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
+              <div className="rounded-[var(--radius-card)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                  <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                     <UsersRound className="h-4 w-4" />
                   </div>
                   <div>
@@ -460,7 +460,7 @@ export function SharedEntitiesWorkspace() {
                 </div>
 
                 {selectedEntity.shares.length ? (
-                  <div className="mt-4 overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+                  <div className="mt-4 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-left">
                         <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
@@ -540,7 +540,7 @@ export function SharedEntitiesWorkspace() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
+                  <div className="mt-4 rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
                     Esta entidad aun no tiene accesos compartidos.
                   </div>
                 )}
@@ -548,7 +548,7 @@ export function SharedEntitiesWorkspace() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
+          <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-5 text-sm text-[var(--color-muted)]">
             La entidad seleccionada ya no esta disponible para administrar.
           </div>
         )}

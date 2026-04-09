@@ -24,7 +24,7 @@ export function ReportsWorkspace() {
             <SectionCard key={card.title} title={card.title}>
               <div className="flex items-center justify-between">
                 <p className="text-2xl font-bold">{card.value}</p>
-                <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                   <Icon className="h-5 w-5" />
                 </div>
               </div>
@@ -38,7 +38,7 @@ export function ReportsWorkspace() {
           {categories.map((category) => (
             <div
               key={category.name}
-              className="flex items-center justify-between rounded-2xl border border-[var(--color-line)] bg-white px-4 py-4"
+              className="flex items-center justify-between rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-4"
             >
               <div>
                 <p className="font-semibold">{category.name}</p>

@@ -157,7 +157,7 @@ export function SettingsWorkspace() {
                     platformName: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 disabled={!isAdmin}
                 required
               />
@@ -173,7 +173,7 @@ export function SettingsWorkspace() {
                     platformLabel: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 disabled={!isAdmin}
                 required
               />
@@ -190,7 +190,7 @@ export function SettingsWorkspace() {
                   platformMotto: event.target.value,
                 }))
               }
-              className="min-h-28 w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="min-h-28 w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               disabled={!isAdmin}
               required
             />
@@ -207,7 +207,7 @@ export function SettingsWorkspace() {
                     timezone: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 disabled={!isAdmin}
                 required
               />
@@ -223,7 +223,7 @@ export function SettingsWorkspace() {
                     currencyCode: event.target.value.toUpperCase(),
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 disabled={!isAdmin}
                 required
               />
@@ -240,7 +240,7 @@ export function SettingsWorkspace() {
                     supportEmail: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
                 disabled={!isAdmin}
                 placeholder="soporte@empresa.com"
               />
@@ -279,7 +279,7 @@ export function SettingsWorkspace() {
           subtitle="Resumen rapido de la configuracion global activa."
         >
           <div className="space-y-4">
-            <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
               <p className="inline-flex items-center gap-2 text-sm font-semibold">
                 <Settings2 className="h-4 w-4 text-[var(--color-brand)]" />
                 Etiqueta visible
@@ -288,7 +288,7 @@ export function SettingsWorkspace() {
                 {platformSettingsQuery.data?.platformLabel}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
               <p className="inline-flex items-center gap-2 text-sm font-semibold">
                 <Globe2 className="h-4 w-4 text-[var(--color-brand)]" />
                 Zona horaria
@@ -297,7 +297,7 @@ export function SettingsWorkspace() {
                 {platformSettingsQuery.data?.timezone}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
               <p className="inline-flex items-center gap-2 text-sm font-semibold">
                 <Mail className="h-4 w-4 text-[var(--color-brand)]" />
                 Soporte
@@ -330,13 +330,13 @@ export function SettingsWorkspace() {
           subtitle="Parametros base para todo el equipo."
         >
           <div className="space-y-3">
-            <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
               <p className="text-sm text-[var(--color-muted)]">Moneda</p>
               <p className="mt-2 text-lg font-bold">
                 {platformSettingsQuery.data?.currencyCode}
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--color-line)] bg-white p-4">
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
               <p className="text-sm text-[var(--color-muted)]">Nombre visible</p>
               <p className="mt-2 text-lg font-bold">
                 {platformSettingsQuery.data?.platformName}

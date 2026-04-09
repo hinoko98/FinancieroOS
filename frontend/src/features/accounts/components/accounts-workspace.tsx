@@ -150,7 +150,7 @@ export function AccountsWorkspace() {
   return (
     <>
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <div className="rounded-[28px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6">
+        <div className="rounded-[var(--radius-panel)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-sm text-[var(--color-muted)]">Total asignado</p>
@@ -179,7 +179,7 @@ export function AccountsWorkspace() {
             </div>
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-[24px] border border-[var(--color-line)]">
+          <div className="mt-6 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-line)]">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-[#f4e6d8] text-[var(--color-muted)]">
                 <tr>
@@ -211,9 +211,9 @@ export function AccountsWorkspace() {
           </div>
         </div>
 
-        <aside className="rounded-[28px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6">
+        <aside className="rounded-[var(--radius-panel)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-2xl bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+            <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
               <Landmark className="h-5 w-5" />
             </div>
             <div>
@@ -226,7 +226,7 @@ export function AccountsWorkspace() {
             {banks.map((bank) => (
               <div
                 key={bank.id}
-                className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3"
+                className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3"
               >
                 <p className="font-semibold">{bank.nombre}</p>
                 <p className="text-sm text-[var(--color-muted)]">{bank.tipo}</p>
@@ -252,7 +252,7 @@ export function AccountsWorkspace() {
                   destino: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none disabled:bg-[#f7f1ea] disabled:text-[var(--color-muted)]"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none disabled:bg-[#f7f1ea] disabled:text-[var(--color-muted)]"
               disabled={availableTargets.length === 0}
             >
               <option value="">
@@ -284,7 +284,7 @@ export function AccountsWorkspace() {
                     mes: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 {monthOptions.map((month) => (
                   <option key={month} value={month}>
@@ -304,7 +304,7 @@ export function AccountsWorkspace() {
                     anio: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 {yearOptions.map((year) => (
                   <option key={year} value={year}>
@@ -324,7 +324,7 @@ export function AccountsWorkspace() {
                     banco: event.target.value,
                   }))
                 }
-                className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
                 {banks.map((bank) => (
                   <option key={bank.id} value={bank.nombre}>
@@ -348,7 +348,7 @@ export function AccountsWorkspace() {
                   monto: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
             />
           </label>
 
@@ -380,7 +380,7 @@ export function AccountsWorkspace() {
                   nombre: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               placeholder="Banco de Bogota"
               required
             />
@@ -396,7 +396,7 @@ export function AccountsWorkspace() {
                   tipo: event.target.value,
                 }))
               }
-              className="w-full rounded-2xl border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
             >
               <option value="Banco">Banco</option>
               <option value="Billetera">Billetera</option>

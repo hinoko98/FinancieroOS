@@ -112,7 +112,7 @@ export default function HomePage() {
                   <Link
                     key={entity.id}
                     href={`/entidades/${entity.id}`}
-                    className="flex flex-col gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-brand)] md:flex-row md:items-center md:justify-between"
+                    className="flex flex-col gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-brand)] md:flex-row md:items-center md:justify-between"
                   >
                     <div>
                       <p className="font-bold">{entity.name}</p>
@@ -131,7 +131,7 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
+              <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
                 Aun no hay entidades creadas. Crea la primera desde el modulo de
                 entidades para empezar a registrar servicios y pagos.
               </div>
@@ -148,7 +148,7 @@ export default function HomePage() {
                   <Link
                     key={record.id}
                     href={`/entidades/${record.entityId}`}
-                    className="block rounded-2xl border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-brand)]"
+                    className="block rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4 transition hover:border-[var(--color-brand)]"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -176,7 +176,7 @@ export default function HomePage() {
                 ))}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
+              <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
                 Cuando registres pagos en una entidad apareceran aqui.
               </div>
             )}
@@ -188,7 +188,7 @@ export default function HomePage() {
             <Link
               key={module.href}
               href={module.href}
-              className="group rounded-[28px] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 transition hover:-translate-y-1 hover:border-[var(--color-brand)]"
+              className="group rounded-[var(--radius-panel)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-6 transition hover:-translate-y-1 hover:border-[var(--color-brand)]"
             >
               <div className="flex items-center justify-between gap-3">
                 <div>

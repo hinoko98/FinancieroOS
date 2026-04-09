@@ -40,7 +40,7 @@ export function DashboardWorkspace() {
             <div className="grid grid-cols-4 gap-4">
               {monthlyBars.map((bar) => (
                 <div key={bar.month} className="space-y-3 text-center">
-                  <div className="flex h-44 items-end justify-center gap-2 rounded-[24px] bg-[#f7efe4] px-3 py-4">
+                  <div className="flex h-44 items-end justify-center gap-2 rounded-[var(--radius-card)] bg-[#f7efe4] px-3 py-4">
                     <div
                       className="w-6 rounded-full bg-[var(--color-brand)]"
                       style={{ height: `${bar.income}%` }}
@@ -62,7 +62,7 @@ export function DashboardWorkspace() {
             {payments.map((payment) => (
               <div
                 key={payment.name}
-                className="rounded-2xl border border-[var(--color-line)] bg-white px-4 py-4"
+                className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-4"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -103,7 +103,7 @@ export function DashboardWorkspace() {
           <div className="space-y-3">
             {auditItems.map((item, index) => (
               <div key={`${item.user}-${index}`} className="flex items-start gap-3">
-                <div className="rounded-2xl bg-[var(--color-brand-soft)] p-2 text-[var(--color-brand-deep)]">
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-2 text-[var(--color-brand-deep)]">
                   <UserRound className="h-4 w-4" />
                 </div>
                 <div>
