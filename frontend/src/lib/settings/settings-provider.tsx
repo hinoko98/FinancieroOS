@@ -44,12 +44,16 @@ type SettingsContextValue = {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
-function applyDashboardColors(colors: DashboardColorSet) {
+function applyDashboardColors(
+  colors: DashboardColorSet,
+  mode: 'light' | 'dark' = 'light',
+) {
   if (typeof document === 'undefined') {
     return;
   }
 
   const root = document.documentElement;
+  root.dataset.dashboardTheme = mode;
 
   root.style.setProperty('--color-surface', colors.dashboardSurfaceColor);
   root.style.setProperty('--color-panel', colors.dashboardPanelColor);
@@ -79,6 +83,28 @@ function resolveDashboardColors(
   );
 }
 
+function resolveThemeMode(
+  settings:
+    | (PreviewPayload & {
+        themePreset?: ThemePreset;
+        customThemeBase?: ThemeBasePreset;
+      })
+    | null
+    | undefined,
+) {
+  const preset = settings?.themePreset ?? 'LIGHT';
+
+  if (preset === 'DARK') {
+    return 'dark' as const;
+  }
+
+  if (preset === 'CUSTOM' && settings?.customThemeBase === 'DARK') {
+    return 'dark' as const;
+  }
+
+  return 'light' as const;
+}
+
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user, token } = useAuth();
   const [settings, setSettings] = useState<DashboardSettings | null>(null);
@@ -87,7 +113,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const refreshSettings = useCallback(async () => {
     if (!user || !token) {
       setSettings(null);
-      applyDashboardColors(lightThemeColors);
+      applyDashboardColors(lightThemeColors, 'light');
       return;
     }
 
@@ -96,10 +122,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await apiClient.get<DashboardSettings>('/settings');
       setSettings(response.data);
-      applyDashboardColors(resolveDashboardColors(response.data));
+      applyDashboardColors(
+        resolveDashboardColors(response.data),
+        resolveThemeMode(response.data),
+      );
     } catch {
       setSettings(null);
-      applyDashboardColors(lightThemeColors);
+      applyDashboardColors(lightThemeColors, 'light');
     } finally {
       setLoading(false);
     }
@@ -111,12 +140,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const applyPreview = useCallback(
     (preview: PreviewPayload) => {
+      const nextSettings = {
+        ...lightThemeColors,
+        ...settings,
+        ...preview,
+      };
       applyDashboardColors(
-        resolveDashboardColors({
-          ...lightThemeColors,
-          ...settings,
-          ...preview,
-        }),
+        resolveDashboardColors(nextSettings),
+        resolveThemeMode(nextSettings),
       );
     },
     [settings],
@@ -125,6 +156,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const resetPreview = useCallback(() => {
     applyDashboardColors(
       settings ? resolveDashboardColors(settings) : lightThemeColors,
+      resolveThemeMode(settings),
     );
   }, [settings]);
 

@@ -32,18 +32,18 @@ export const lightThemeColors: DashboardColorSet = {
 };
 
 export const darkThemeColors: DashboardColorSet = {
-  dashboardSurfaceColor: '#0b1220',
-  dashboardPanelColor: '#111827',
-  dashboardPanelStrongColor: '#172131',
-  dashboardInkColor: '#edf2f7',
-  dashboardMutedColor: '#98a6ba',
-  dashboardLineColor: '#253246',
-  dashboardBrandColor: '#d4a15a',
-  dashboardBrandSoftColor: '#1d2a3d',
-  dashboardBrandDeepColor: '#f0c98f',
-  dashboardSuccessColor: '#46c487',
-  dashboardDangerColor: '#ef6b73',
-  dashboardWarningColor: '#d7a94b',
+  dashboardSurfaceColor: '#050816',
+  dashboardPanelColor: '#0c1324',
+  dashboardPanelStrongColor: '#121b30',
+  dashboardInkColor: '#edf3ff',
+  dashboardMutedColor: '#8b99b2',
+  dashboardLineColor: '#24314d',
+  dashboardBrandColor: '#b88646',
+  dashboardBrandSoftColor: '#1b2740',
+  dashboardBrandDeepColor: '#e7bf7a',
+  dashboardSuccessColor: '#34c38f',
+  dashboardDangerColor: '#f26d7d',
+  dashboardWarningColor: '#d9a441',
 };
 
 export const themePresetOptions: {

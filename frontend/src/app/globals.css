@@ -39,6 +39,34 @@ body {
   font-family: var(--font-sans), sans-serif;
 }
 
+html[data-dashboard-theme='dark'] body {
+  background:
+    radial-gradient(circle at top left, rgba(31, 45, 77, 0.58), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(17, 31, 58, 0.46), transparent 32%),
+    linear-gradient(180deg, rgba(8, 13, 25, 0.94), rgba(5, 8, 22, 1)),
+    var(--color-surface);
+}
+
+html[data-dashboard-theme='dark'] {
+  --shadow-panel: 0 24px 48px rgba(0, 0, 0, 0.34);
+}
+
+html[data-dashboard-theme='dark'] .bg-white {
+  background-color: var(--color-panel-strong) !important;
+  color: var(--color-ink);
+}
+
+html[data-dashboard-theme='dark'] input,
+html[data-dashboard-theme='dark'] select,
+html[data-dashboard-theme='dark'] textarea {
+  color: var(--color-ink);
+}
+
+html[data-dashboard-theme='dark'] input::placeholder,
+html[data-dashboard-theme='dark'] textarea::placeholder {
+  color: color-mix(in srgb, var(--color-muted) 84%, transparent);
+}
+
 a {
   color: inherit;
   text-decoration: none;

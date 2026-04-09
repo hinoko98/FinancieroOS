@@ -299,7 +299,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        'grid min-h-screen w-full gap-4 px-3 py-3 sm:gap-5 sm:px-4 sm:py-4 xl:gap-6 xl:px-6 xl:py-5 2xl:px-8',
+        'grid min-h-screen w-full gap-4 bg-[var(--color-surface)] px-3 py-3 sm:gap-5 sm:px-4 sm:py-4 xl:gap-0 xl:px-0 xl:py-0',
         sidebarExpanded
           ? 'xl:grid-cols-[340px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)]'
           : 'xl:grid-cols-[94px_minmax(0,1fr)]',
@@ -319,18 +319,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside
         id="app-shell-sidebar"
         className={cn(
-          'fixed inset-y-3 left-3 z-40 flex w-[min(22rem,calc(100vw-1.5rem))] flex-col rounded-[var(--radius-shell)] border border-[var(--color-line)] bg-[linear-gradient(180deg,var(--color-brand),var(--color-brand-deep))] p-5 text-[#fff8f1] shadow-[var(--shadow-panel)] transition-all duration-300 sm:p-6 xl:sticky xl:top-5 xl:left-auto xl:z-auto xl:w-full xl:self-stretch xl:translate-x-0 xl:opacity-100 xl:pointer-events-auto 2xl:top-6',
+          'fixed inset-y-0 left-0 z-40 flex w-[min(22rem,100vw)] flex-col bg-[linear-gradient(180deg,var(--color-brand),var(--color-brand-deep))] p-5 text-[#fff8f1] transition-all duration-300 sm:p-6 xl:sticky xl:top-0 xl:left-auto xl:z-auto xl:w-full xl:self-stretch xl:translate-x-0 xl:opacity-100 xl:pointer-events-auto',
           mobileSidebarOpen
             ? 'translate-x-0 opacity-100'
             : '-translate-x-[calc(100%+1rem)] opacity-0 pointer-events-none',
           sidebarExpanded
-            ? 'xl:h-[calc(100vh-2.5rem)] 2xl:h-[calc(100vh-3rem)]'
-            : 'xl:h-[calc(100vh-2.5rem)] xl:px-3 xl:py-4 2xl:h-[calc(100vh-3rem)]',
+            ? 'xl:h-screen xl:px-8 xl:py-8'
+            : 'xl:h-screen xl:px-3 xl:py-8',
         )}
       >
         <div
           className={cn(
-            'mb-8 flex items-start justify-between gap-4',
+            'mb-10 flex items-start justify-between gap-4',
             !sidebarExpanded && 'xl:mb-6 xl:flex-col xl:items-center xl:gap-3',
           )}
         >
@@ -345,11 +345,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </p>
             <div
               className={cn(
-                'mt-3',
+                'mt-4',
                 !sidebarExpanded && 'xl:mt-0 xl:flex xl:justify-center',
               )}
             >
-              <div className="rounded-[var(--radius-control)] border border-white/14 bg-white/10 px-3 py-2 text-center">
+              <div className="text-center">
                 <p
                   className={cn(
                     'text-2xl font-bold tracking-tight',
@@ -381,7 +381,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-white/18 text-[#fff8f1] transition hover:bg-white/10 xl:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-[#fff8f1] transition hover:bg-white/10 xl:hidden"
             aria-label="Cerrar menu principal"
           >
             <X className="h-4 w-4" />
@@ -390,7 +390,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <nav
           className={cn(
-            'flex flex-1 flex-col gap-3 overflow-y-auto',
+            'flex flex-1 flex-col gap-2 overflow-y-auto',
             !sidebarExpanded && 'xl:items-center xl:overflow-visible',
           )}
         >
@@ -436,7 +436,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setOwnedEntitiesOpen((current) => !current)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-white/12 text-[#f7ede1] transition hover:bg-white/10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-[#f7ede1] transition hover:bg-white/10"
                   aria-label={
                     ownedEntitiesOpen
                       ? 'Ocultar entidades propias'
@@ -508,7 +508,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setSharedEntitiesOpen((current) => !current)}
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] border border-white/12 text-[#f7ede1] transition hover:bg-white/10"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-[#f7ede1] transition hover:bg-white/10"
                   aria-label={
                     sharedEntitiesOpen
                       ? 'Ocultar entidades compartidas'
@@ -595,8 +595,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
 
-      <main className="min-w-0 rounded-[var(--radius-shell)] border border-[var(--color-line)] bg-[var(--color-panel)] p-4 shadow-[var(--shadow-panel)] backdrop-blur sm:p-6 xl:min-h-[calc(100vh-2.5rem)] xl:p-8 2xl:min-h-[calc(100vh-3rem)]">
-        <header className="mb-6 flex flex-col gap-4 border-b border-[var(--color-line)] pb-5 sm:flex-row sm:items-center sm:justify-between xl:mb-8 xl:pb-6">
+      <main className="min-w-0 rounded-[var(--radius-shell)] bg-[var(--color-panel)] p-4 sm:p-6 xl:min-h-screen xl:rounded-none xl:px-10 xl:py-8 2xl:px-12">
+        <header className="mb-6 flex flex-col gap-4 pb-3 sm:flex-row sm:items-center sm:justify-between xl:mb-8 xl:pb-4">
           <div className="flex items-start gap-3">
             <button
               type="button"
