@@ -21,7 +21,7 @@ import { Modal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusPill } from '@/components/ui/status-pill';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 import {
   FINANCE_ACCOUNTS_QUERY_KEY,
   getFinancialAccountTypeLabel,

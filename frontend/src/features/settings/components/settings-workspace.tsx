@@ -6,7 +6,7 @@ import { AxiosError } from 'axios';
 import { Globe2, Mail, Settings2 } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 type PlatformSettings = {
   id: string;

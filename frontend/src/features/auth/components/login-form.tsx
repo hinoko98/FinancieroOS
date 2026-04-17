@@ -10,7 +10,7 @@ import {
   LockKeyhole,
   UserRound,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 function normalizeToken(value: string) {
   return value
@@ -60,6 +60,7 @@ export function LoginForm() {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -89,12 +90,28 @@ export function LoginForm() {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
 
     try {
       if (mode === 'login') {
         await login(loginForm);
       } else {
-        await register(registerForm);
+        const result = await register(registerForm);
+        setLoginForm({
+          username: result.username,
+          password: '',
+        });
+        setRegisterForm({
+          firstName: '',
+          lastName: '',
+          nationalId: '',
+          birthDate: '',
+          password: '',
+        });
+        setMode('login');
+        setMessage(
+          `Cuenta creada correctamente. Ingresa con el usuario ${result.username}.`,
+        );
       }
     } catch (submitError) {
       setError(
@@ -105,6 +122,7 @@ export function LoginForm() {
             : 'No fue posible crear la cuenta. Revisa los datos del formulario.',
         ),
       );
+      setMessage(null);
     } finally {
       setLoading(false);
     }
@@ -118,6 +136,7 @@ export function LoginForm() {
           onClick={() => {
             setMode('login');
             setError(null);
+            setMessage(null);
           }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
             mode === 'login'
@@ -132,6 +151,7 @@ export function LoginForm() {
           onClick={() => {
             setMode('register');
             setError(null);
+            setMessage(null);
           }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
             mode === 'register'
@@ -331,6 +351,7 @@ export function LoginForm() {
         )}
 
         {error ? <p className="text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {message ? <p className="text-sm text-[var(--color-success)]">{message}</p> : null}
 
         <button
           type="submit"

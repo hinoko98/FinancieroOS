@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import SettingsPage from '@/app/ajustes/page';
+import AdministrationPage from '@/app/administracion/page';
+import AdministrationPlatformPage from '@/app/administracion/plataforma/page';
+import AdministrationUsersPage from '@/app/administracion/usuarios/page';
 import SharedEntitiesPage from '@/app/compartidos/page';
 import ConfigurationPage from '@/app/configuracion/page';
 import EntitiesPage from '@/app/entidades/page';
@@ -35,7 +37,9 @@ function DocumentTitleSync() {
       ['/ingresos', 'Ingresos | Control Financiero'],
       ['/mi-perfil', 'Mi perfil | Control Financiero'],
       ['/configuracion', 'Configuracion | Control Financiero'],
-      ['/ajustes', 'Ajustes | Control Financiero'],
+      ['/administracion', 'Administracion | Control Financiero'],
+      ['/administracion/usuarios', 'Usuarios del sistema | Control Financiero'],
+      ['/administracion/plataforma', 'Ajustes de plataforma | Control Financiero'],
     ]);
 
     if (location.pathname.startsWith('/entidades/')) {
@@ -62,8 +66,14 @@ export function App() {
         <Route path="/registro-general" element={<GeneralRecordsPage />} />
         <Route path="/ingresos" element={<IncomesPage />} />
         <Route path="/configuracion" element={<ConfigurationPage />} />
+        <Route path="/administracion" element={<AdministrationPage />} />
+        <Route path="/administracion/usuarios" element={<AdministrationUsersPage />} />
+        <Route
+          path="/administracion/plataforma"
+          element={<AdministrationPlatformPage />}
+        />
         <Route path="/mi-perfil" element={<ProfilePage />} />
-        <Route path="/ajustes" element={<SettingsPage />} />
+        <Route path="/ajustes" element={<Navigate to="/administracion/plataforma" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

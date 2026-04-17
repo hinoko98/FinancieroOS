@@ -2,14 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownToLine, PlusCircle, Wallet } from 'lucide-react';
+import { ArrowDownToLine, PlusCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatCurrency, formatDateTime, extractApiErrorMessage } from '@/features/entities/lib/entities';
+import { formatCurrency, extractApiErrorMessage } from '@/features/entities/lib/entities';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 import { COLOMBIA_BANK_OPTIONS } from '@/features/finance/lib/colombia-banks';
 import {
   FINANCE_ACCOUNTS_QUERY_KEY,
@@ -146,25 +146,6 @@ export function IncomesWorkspace() {
         .flatMap((account) => account.movements)
         .filter((movement) => movement.movementType === 'INCOME')
         .reduce((accumulator, movement) => accumulator + movement.amount, 0),
-    [accounts],
-  );
-
-  const recentMovements = useMemo(
-    () =>
-      accounts
-        .flatMap((account) =>
-          account.movements.map((movement) => ({
-            ...movement,
-            accountId: account.id,
-            bankName: account.bankName,
-            accountLabel: account.accountLabel,
-            accountType: account.accountType,
-          })),
-        )
-        .sort(
-          (left, right) =>
-            new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime(),
-        ),
     [accounts],
   );
 
@@ -362,104 +343,36 @@ export function IncomesWorkspace() {
           </SectionCard>
 
           <SectionCard
-            title="Catalogo de bancos"
-            subtitle="Selector oficial cargado para el formulario de cuentas."
+            title="Trazabilidad"
+            subtitle="El detalle de ingresos y asignaciones ahora se consulta en el registro general."
           >
-            <div className="grid gap-2 sm:grid-cols-2">
-              {COLOMBIA_BANK_OPTIONS.map((bank) => (
-                <div
-                  key={bank}
-                  className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-medium"
-                >
-                  {bank}
+            <div className="space-y-4 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-5">
+              <p className="text-sm leading-7 text-[var(--color-muted)]">
+                La lista de bancos fue movida a <strong>Configuracion</strong> y
+                los movimientos detallados ya no se duplican aqui. Todo el
+                historial consolidado se consulta en <strong>Registro general</strong>.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                    Cuentas con saldo
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-[var(--color-brand-deep)]">
+                    {accounts.filter((account) => account.balance > 0).length}
+                  </p>
                 </div>
-              ))}
+                <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+                    Consulta centralizada
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-[var(--color-brand-deep)]">
+                    Registro general
+                  </p>
+                </div>
+              </div>
             </div>
           </SectionCard>
         </div>
-
-        <SectionCard
-          title="Movimientos de ingreso"
-          subtitle="Entradas registradas y salidas por asignacion a entidades."
-        >
-          {recentMovements.length ? (
-            <div className="space-y-3">
-              {recentMovements.map((movement) => (
-                <div
-                  key={movement.id}
-                  className="grid gap-4 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-4 md:grid-cols-[1.1fr_1fr_0.8fr_auto]"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
-                      {movement.movementType === 'INCOME' ? (
-                        <ArrowDownToLine className="h-4 w-4" />
-                      ) : (
-                        <Wallet className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold">
-                        {movement.sourceLabel || movement.category || 'Movimiento'}
-                      </p>
-                      <p className="text-sm text-[var(--color-muted)]">
-                        {movement.bankName} / {movement.accountLabel}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {movement.movementType === 'INCOME'
-                        ? movement.category || 'Ingreso'
-                        : 'Asignacion a entidad'}
-                    </p>
-                    <p className="text-sm text-[var(--color-muted)]">
-                      {movement.entityAllocation
-                        ? movement.entityAllocation.entityName
-                        : movement.performedBy.fullName}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {formatDateTime(movement.occurredAt)}
-                    </p>
-                    <p className="text-sm text-[var(--color-muted)]">
-                      {getFinancialAccountTypeLabel(movement.accountType)}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col items-start gap-2 md:items-end">
-                    <p
-                      className={`text-lg font-bold ${
-                        movement.movementType === 'INCOME'
-                          ? 'text-[var(--color-success)]'
-                          : 'text-[var(--color-danger)]'
-                      }`}
-                    >
-                      {movement.movementType === 'INCOME' ? '+' : '-'}
-                      {formatCurrency(movement.amount)}
-                    </p>
-                    <StatusPill
-                      label={
-                        movement.movementType === 'INCOME'
-                          ? 'Ingreso'
-                          : 'Asignacion'
-                      }
-                      tone={
-                        movement.movementType === 'INCOME' ? 'success' : 'warning'
-                      }
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white p-6 text-sm text-[var(--color-muted)]">
-              Todavia no hay movimientos financieros en tus cuentas.
-            </div>
-          )}
-        </SectionCard>
       </div>
 
       <Modal

@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { CircleHelp, RefreshCcw } from 'lucide-react';
+import { CircleHelp, RefreshCcw, RotateCcw, Save } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
+import { BanksCatalogCard } from '@/features/finance/components/banks-catalog-card';
 import { apiClient } from '@/lib/api/client';
 import {
   type DashboardSettings,
   useSettings,
-} from '@/lib/settings/settings-provider';
+} from '@/lib/settings/settings-context';
 import {
   darkThemeColors,
   lightThemeColors,
@@ -18,7 +19,8 @@ import {
   type ThemeBasePreset,
   type ThemePreset,
 } from '@/lib/settings/theme-presets';
-import { UserIcon, userIconOptions } from '@/lib/settings/user-icons';
+import { userIconOptions } from '@/lib/settings/user-icon-options';
+import { UserIcon } from '@/lib/settings/user-icons';
 
 type PaletteField = {
   key: keyof DashboardColorSet;
@@ -235,6 +237,22 @@ function AppearanceWorkspaceForm({
       resetPreview();
     },
   });
+
+  const restoreSavedAppearance = () => {
+    const savedState = getInitialAppearanceState(settings, defaults);
+
+    setThemePreset(savedState.themePreset);
+    setCustomThemeBase(savedState.customThemeBase);
+    setUserIcon(savedState.userIcon);
+    setPaletteForm(savedState.paletteForm);
+    applyPreview({
+      themePreset: savedState.themePreset,
+      customThemeBase: savedState.customThemeBase,
+      ...savedState.paletteForm,
+    });
+    setMessage(null);
+    setError(null);
+  };
 
   const setThemeWithBase = (
     nextPreset: ThemePreset,
@@ -507,15 +525,24 @@ function AppearanceWorkspaceForm({
           {error ? <p className="text-sm text-[var(--color-danger)]">{error}</p> : null}
           {message ? <p className="text-sm text-[var(--color-success)]">{message}</p> : null}
 
-          <div className="flex flex-wrap gap-3 border-t border-[var(--color-line)]/20 pt-2">
+          <div className="flex flex-wrap items-center gap-3 border-t border-[var(--color-line)]/20 pt-3">
             <button
               type="submit"
               disabled={updateAppearanceMutation.isPending || loading}
-              className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
+              <Save className="h-4 w-4" />
               {updateAppearanceMutation.isPending
                 ? 'Guardando...'
                 : 'Guardar configuracion'}
+            </button>
+            <button
+              type="button"
+              onClick={restoreSavedAppearance}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)] transition hover:border-[var(--color-brand)]/40 hover:bg-[var(--color-brand-soft)]"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Volver a guardado
             </button>
             <button
               type="button"
@@ -525,14 +552,16 @@ function AppearanceWorkspaceForm({
                 setMessage(null);
                 setError(null);
               }}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-panel)] px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)] hover:border-[var(--color-brand)]/40"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-panel)] px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)] transition hover:border-[var(--color-brand)]/40 hover:bg-[var(--color-panel-strong)]"
             >
               <RefreshCcw className="h-4 w-4" />
-              Restaurar
+              Restaurar base clara
             </button>
           </div>
         </form>
       </SectionCard>
+
+      <BanksCatalogCard />
     </div>
   );
 }

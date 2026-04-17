@@ -20,6 +20,24 @@ export function createOpenApiDocument() {
     paths: {
       '/': { get: { summary: 'Informacion general del sistema' } },
       '/health': { get: { summary: 'Healthcheck del servicio' } },
+      '/admin/users': {
+        get: {
+          summary: 'Listar usuarios para administracion',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/overview': {
+        get: {
+          summary: 'Resumen administrativo del sistema',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/users/{userId}': {
+        patch: {
+          summary: 'Actualizar un usuario desde administracion',
+          security: [{ bearerAuth: [] }],
+        },
+      },
       '/auth/register': { post: { summary: 'Registro de usuario' } },
       '/auth/login': { post: { summary: 'Inicio de sesion' } },
       '/auth/me': {

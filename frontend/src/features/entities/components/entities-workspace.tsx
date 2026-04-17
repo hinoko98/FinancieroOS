@@ -7,7 +7,7 @@ import { Building2, ChevronRight, CircleHelp, PlusCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 import {
   ENTITIES_QUERY_KEY,
   extractApiErrorMessage,

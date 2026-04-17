@@ -17,7 +17,7 @@ import {
   type FinancialAccount,
 } from '@/features/finance/lib/finance';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 type GeneralMovement = {
   id: string;

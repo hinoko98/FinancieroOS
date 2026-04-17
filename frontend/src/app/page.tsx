@@ -24,7 +24,7 @@ import {
   type Entity,
 } from '@/features/entities/lib/entities';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 export default function HomePage() {
   const { user } = useAuth();

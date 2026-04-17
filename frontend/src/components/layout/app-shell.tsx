@@ -16,12 +16,13 @@ import {
   Menu,
   ReceiptText,
   Share2,
+  ShieldUser,
   SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
-import { useSettings } from '@/lib/settings/settings-provider';
+import { useAuth } from '@/lib/auth/auth-context';
+import { useSettings } from '@/lib/settings/settings-context';
 import { UserIcon } from '@/lib/settings/user-icons';
 import { cn } from '@/lib/utils/cn';
 import { ENTITIES_QUERY_KEY, type Entity } from '@/features/entities/lib/entities';
@@ -80,12 +81,20 @@ function getPageTitle(pathname: string) {
     return 'Configuracion';
   }
 
-  if (pathname === '/mi-perfil') {
-    return 'Mi perfil';
+  if (pathname === '/administracion') {
+    return 'Administracion';
   }
 
-  if (pathname === '/ajustes') {
+  if (pathname === '/administracion/usuarios') {
+    return 'Usuarios del sistema';
+  }
+
+  if (pathname === '/administracion/plataforma' || pathname === '/ajustes') {
     return 'Ajustes de plataforma';
+  }
+
+  if (pathname === '/mi-perfil') {
+    return 'Mi perfil';
   }
 
   return 'Dashboard';
@@ -108,6 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [ownedEntitiesOpen, setOwnedEntitiesOpen] = useState(true);
   const [sharedEntitiesOpen, setSharedEntitiesOpen] = useState(true);
+  const [adminSectionOpen, setAdminSectionOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -266,6 +276,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const sharedLinkActive =
     pathname === '/compartidos' ||
     (pathname.startsWith('/entidades/') && currentEntity?.isOwner === false);
+
+  const administrationLinkActive = pathname.startsWith('/administracion');
 
   if (!hydrated || !user) {
     return null;
@@ -615,6 +627,91 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Configuracion
             </span>
           </Link>
+
+          {user.role === 'ADMIN' ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/administracion"
+                  onClick={closeSidebarOnMobile}
+                  title={!sidebarExpanded ? 'Administracion' : undefined}
+                  className={cn(
+                    'flex min-w-0 flex-1 items-center gap-3 rounded-[var(--radius-control)] px-4 py-3 text-sm font-semibold transition',
+                    !sidebarExpanded && 'xl:w-14 xl:justify-center xl:px-0',
+                    administrationLinkActive
+                      ? 'bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)] shadow-sm'
+                      : 'text-[#f7ede1] hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand-deep)]',
+                  )}
+                >
+                  <ShieldUser className="h-4 w-4 shrink-0" />
+                  <span className={cn('flex-1', !sidebarExpanded && 'xl:hidden')}>
+                    Administracion
+                  </span>
+                </Link>
+
+                {sidebarExpanded ? (
+                  <button
+                    type="button"
+                    onClick={() => setAdminSectionOpen((current) => !current)}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] text-[#f7ede1] transition hover:bg-white/10"
+                    aria-label={
+                      adminSectionOpen
+                        ? 'Ocultar opciones de administracion'
+                        : 'Mostrar opciones de administracion'
+                    }
+                  >
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 transition-transform',
+                        adminSectionOpen ? 'rotate-0' : '-rotate-90',
+                      )}
+                    />
+                  </button>
+                ) : null}
+              </div>
+
+              {sidebarExpanded && adminSectionOpen ? (
+                <div className="space-y-1 pl-3">
+                  <Link
+                    href="/administracion"
+                    onClick={closeSidebarOnMobile}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[calc(var(--radius-control)-4px)] px-3 py-2 text-sm transition',
+                      pathname === '/administracion'
+                        ? 'bg-white/12 text-white'
+                        : 'text-[#f8e8d7]/76 hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <span className="truncate">Resumen</span>
+                  </Link>
+                  <Link
+                    href="/administracion/usuarios"
+                    onClick={closeSidebarOnMobile}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[calc(var(--radius-control)-4px)] px-3 py-2 text-sm transition',
+                      pathname === '/administracion/usuarios'
+                        ? 'bg-white/12 text-white'
+                        : 'text-[#f8e8d7]/76 hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <span className="truncate">Usuarios</span>
+                  </Link>
+                  <Link
+                    href="/administracion/plataforma"
+                    onClick={closeSidebarOnMobile}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[calc(var(--radius-control)-4px)] px-3 py-2 text-sm transition',
+                      pathname === '/administracion/plataforma'
+                        ? 'bg-white/12 text-white'
+                        : 'text-[#f8e8d7]/76 hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <span className="truncate">Ajustes de plataforma</span>
+                  </Link>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </nav>
       </aside>
 
@@ -772,13 +869,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     className="flex w-full items-center rounded-[var(--radius-control)] px-4 py-3 text-left text-sm font-semibold transition hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand-deep)]"
                   >
                     Mi perfil
-                  </Link>
-                  <Link
-                    href="/ajustes"
-                    onClick={() => setProfileMenuOpen(false)}
-                    className="flex w-full items-center rounded-[var(--radius-control)] px-4 py-3 text-sm font-semibold transition hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand-deep)]"
-                  >
-                    Ajustes de plataforma
                   </Link>
                   <button
                     type="button"

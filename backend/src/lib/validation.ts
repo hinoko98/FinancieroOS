@@ -12,6 +12,8 @@ const USER_ICON_OPTIONS = [
 const THEME_PRESETS = ['LIGHT', 'DARK', 'CUSTOM'] as const;
 const THEME_BASE_PRESETS = ['LIGHT', 'DARK'] as const;
 const ENTITY_SHARE_PERMISSIONS = ['VIEW', 'EDIT', 'MANAGE'] as const;
+const USER_ROLES = ['ADMIN', 'MANAGER', 'ANALYST', 'OPERATOR'] as const;
+const RECORD_STATUSES = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
 const FINANCIAL_ACCOUNT_TYPES = [
   'AHORROS',
   'CORRIENTE',
@@ -129,6 +131,17 @@ export type CreateFinancialIncomeInput = {
   category?: string;
   sourceLabel?: string;
 };
+
+export type UpdateManagedUserInput = Partial<{
+  username: string;
+  firstName: string;
+  lastName: string;
+  nationalId: string;
+  birthDate: string;
+  role: (typeof USER_ROLES)[number];
+  status: (typeof RECORD_STATUSES)[number];
+  newPassword: string;
+}>;
 
 function ensurePlainObject(value: unknown) {
   if (!value || Array.isArray(value) || typeof value !== 'object') {
@@ -785,5 +798,90 @@ export function parseCreateFinancialIncomeInput(
     sourceLabel: readOptionalString(payload, 'sourceLabel', {
       maxLength: 160,
     }),
+  };
+}
+
+export function parseUpdateManagedUserInput(
+  value: unknown,
+): UpdateManagedUserInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'username',
+    'firstName',
+    'lastName',
+    'nationalId',
+    'birthDate',
+    'role',
+    'status',
+    'newPassword',
+  ]);
+  assertAtLeastOneKey(payload, [
+    'username',
+    'firstName',
+    'lastName',
+    'nationalId',
+    'birthDate',
+    'role',
+    'status',
+    'newPassword',
+  ]);
+
+  const username = readUpdatableString(payload, 'username', {
+    maxLength: 30,
+  });
+  const firstName = readUpdatableString(payload, 'firstName', {
+    maxLength: 60,
+  });
+  const lastName = readUpdatableString(payload, 'lastName', {
+    maxLength: 60,
+  });
+  const nationalId = readUpdatableString(payload, 'nationalId', {
+    maxLength: 20,
+  });
+  const newPassword = readUpdatableString(payload, 'newPassword', {
+    maxLength: 120,
+  });
+
+  if (username !== undefined && username.length < 3) {
+    throw new HttpError(
+      400,
+      'El campo username debe tener minimo 3 caracteres',
+    );
+  }
+
+  if (firstName !== undefined && firstName.length < 2) {
+    throw new HttpError(
+      400,
+      'El campo firstName debe tener minimo 2 caracteres',
+    );
+  }
+
+  if (lastName !== undefined && lastName.length < 2) {
+    throw new HttpError(
+      400,
+      'El campo lastName debe tener minimo 2 caracteres',
+    );
+  }
+
+  if (nationalId !== undefined && !/^[0-9]+$/.test(nationalId)) {
+    throw new HttpError(400, 'La cedula solo puede contener numeros');
+  }
+
+  if (newPassword !== undefined && newPassword.length < 8) {
+    throw new HttpError(
+      400,
+      'El campo newPassword debe tener minimo 8 caracteres',
+    );
+  }
+
+  return {
+    username,
+    firstName,
+    lastName,
+    nationalId,
+    birthDate: readOptionalDateString(payload, 'birthDate'),
+    role: readOptionalEnum(payload, 'role', USER_ROLES),
+    status: readOptionalEnum(payload, 'status', RECORD_STATUSES),
+    newPassword,
   };
 }
