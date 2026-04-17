@@ -24,6 +24,12 @@ export type EntityAllocation = {
   id: string;
   amount: number;
   sourceLabel: string | null;
+  sourceAccount: {
+    id: string;
+    bankName: string;
+    accountLabel: string;
+    accountType: string;
+  } | null;
   occurredAt: string;
   createdAt: string;
   updatedAt: string;
@@ -216,7 +222,9 @@ export function getEntityHistory(entity: Entity) {
       creditAmount: allocation.amount,
       debitAmount: 0,
       label: allocation.sourceLabel || 'Asignacion de fondos',
-      secondaryLabel: null,
+      secondaryLabel: allocation.sourceAccount
+        ? `${allocation.sourceAccount.bankName} / ${allocation.sourceAccount.accountLabel}`
+        : null,
       serviceId: null,
       serviceName: null,
       performedBy: allocation.performedBy,

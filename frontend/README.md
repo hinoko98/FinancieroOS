@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Control Financiero Frontend
 
-## Getting Started
+Frontend migrado a `React + Vite + React Router`, con `Tailwind CSS` para layout y utilidades, y `MUI` para la base de componentes compartidos.
 
-First, run the development server:
+## Scripts
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm run preview
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+La app de desarrollo corre en `http://localhost:3001`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Conexion con backend
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Por defecto el frontend usa:
 
-## Learn More
+- `VITE_API_URL=/api/v1`
+- `VITE_PROXY_TARGET=http://localhost:3000`
 
-To learn more about Next.js, take a look at the following resources:
+Con esa configuracion, `Vite` redirige las llamadas `/api/*` al backend local en `http://localhost:3000`, asi que:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Arranca el backend en `http://localhost:3000`
+2. Arranca el frontend con `npm run dev`
+3. El frontend queda consumiendo la API sin cambiar codigo
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Si en otro entorno el backend vive en otra URL, cambia `VITE_API_URL` por una URL completa, por ejemplo:
 
-## Deploy on Vercel
+```bash
+VITE_API_URL=https://api.midominio.com/api/v1
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- React 19
+- Vite 7
+- React Router
+- Tailwind CSS v4
+- MUI 7
+- React Query
+- Axios
+
+## Nota de despliegue
+
+Si el frontend se publica como SPA, el servidor debe redirigir las rutas no estaticas a `index.html` para que `react-router-dom` pueda resolverlas en cliente.

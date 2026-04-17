@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
 
 type AuthUser = {
+  id: string;
   sub: string;
   username: string;
   role: string;
@@ -50,6 +51,20 @@ function syncApiToken(token: string | null) {
   delete apiClient.defaults.headers.common.Authorization;
 }
 
+function normalizeAuthUser(user: AuthUser | null) {
+  if (!user) {
+    return null;
+  }
+
+  const resolvedId = user.id || user.sub;
+
+  return {
+    ...user,
+    id: resolvedId,
+    sub: user.sub || resolvedId,
+  };
+}
+
 function readStoredSession() {
   if (typeof window === 'undefined') {
     return { token: null, user: null };
@@ -59,7 +74,8 @@ function readStoredSession() {
   const storedUser = window.localStorage.getItem(USER_KEY);
 
   try {
-    const user = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
+    const rawUser = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
+    const user = normalizeAuthUser(rawUser);
     return { token, user };
   } catch {
     window.localStorage.removeItem(USER_KEY);
@@ -84,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applySession = useCallback(
     (nextToken: string | null, nextUser: AuthUser | null) => {
       syncApiToken(nextToken);
-      setSession({ token: nextToken, user: nextUser });
+      setSession({ token: nextToken, user: normalizeAuthUser(nextUser) });
     },
     [],
   );
@@ -116,9 +132,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const persistSession = useCallback(
     (nextToken: string, nextUser: AuthUser) => {
+      const normalizedUser = normalizeAuthUser(nextUser);
+      if (!normalizedUser) {
+        return;
+      }
+
       window.localStorage.setItem(TOKEN_KEY, nextToken);
-      window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-      applySession(nextToken, nextUser);
+      window.localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+      applySession(nextToken, normalizedUser);
       emitAuthChange();
     },
     [applySession],

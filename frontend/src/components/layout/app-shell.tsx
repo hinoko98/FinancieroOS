@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -65,6 +66,10 @@ function getPageTitle(pathname: string) {
 
   if (pathname === '/registro-general') {
     return 'Registro general';
+  }
+
+  if (pathname === '/ingresos') {
+    return 'Ingresos';
   }
 
   if (pathname === '/compartidos') {
@@ -572,6 +577,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ClipboardList className="h-4 w-4 shrink-0" />
             <span className={cn('flex-1', !sidebarExpanded && 'xl:hidden')}>
               Registro general
+            </span>
+          </Link>
+
+          <Link
+            href="/ingresos"
+            onClick={closeSidebarOnMobile}
+            title={!sidebarExpanded ? 'Ingresos' : undefined}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-[var(--radius-control)] px-4 py-3 text-sm font-semibold transition',
+              !sidebarExpanded && 'xl:w-14 xl:justify-center xl:px-0',
+              pathname === '/ingresos'
+                ? 'bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)] shadow-sm'
+                : 'text-[#f7ede1] hover:bg-[var(--color-brand-soft)] hover:text-[var(--color-brand-deep)]',
+            )}
+          >
+            <HandCoins className="h-4 w-4 shrink-0" />
+            <span className={cn('flex-1', !sidebarExpanded && 'xl:hidden')}>
+              Ingresos
             </span>
           </Link>
 

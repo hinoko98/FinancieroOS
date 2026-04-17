@@ -5,6 +5,7 @@ import { AuditService } from './services/audit.service';
 import { AuthService } from './services/auth.service';
 import { DefaultAdminService } from './services/default-admin.service';
 import { EntitiesService } from './services/entities.service';
+import { FinanceService } from './services/finance.service';
 import { SettingsService } from './services/settings.service';
 
 async function bootstrap() {
@@ -16,6 +17,7 @@ async function bootstrap() {
   const auditService = new AuditService(prisma);
   const authService = new AuthService(prisma, auditService, config);
   const entitiesService = new EntitiesService(prisma, auditService);
+  const financeService = new FinanceService(prisma, auditService);
   const settingsService = new SettingsService(prisma, auditService);
   const defaultAdminService = new DefaultAdminService(
     prisma,
@@ -29,6 +31,7 @@ async function bootstrap() {
     authService,
     auditService,
     entitiesService,
+    financeService,
     settingsService,
   });
 

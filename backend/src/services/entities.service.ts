@@ -74,6 +74,14 @@ export class EntitiesService {
                   fullName: true,
                 },
               },
+              sourceAccount: {
+                select: {
+                  id: true,
+                  bankName: true,
+                  accountLabel: true,
+                  accountType: true,
+                },
+              },
             },
             orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
           },
@@ -210,6 +218,14 @@ export class EntitiesService {
           id: allocation.id,
           amount: Number(allocation.amount),
           sourceLabel: allocation.sourceLabel,
+          sourceAccount: allocation.sourceAccount
+            ? {
+                id: allocation.sourceAccount.id,
+                bankName: allocation.sourceAccount.bankName,
+                accountLabel: allocation.sourceAccount.accountLabel,
+                accountType: allocation.sourceAccount.accountType,
+              }
+            : null,
           occurredAt: allocation.occurredAt,
           createdAt: allocation.createdAt,
           updatedAt: allocation.updatedAt,
@@ -333,23 +349,96 @@ export class EntitiesService {
       throw new HttpError(404, 'Entidad no encontrada');
     }
 
-    const allocation = await this.prisma.trackingEntityAllocation.create({
-      data: {
-        entityId: entity.id,
-        amount: dto.amount,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
-        sourceLabel: this.optionalText(dto.sourceLabel),
-        performedById: userId,
-      },
-      include: {
-        performedBy: {
+    const allocation = await this.prisma.$transaction(async (tx) => {
+      const sourceAccountId = this.optionalText(dto.sourceAccountId);
+
+      let sourceAccount: {
+        id: string;
+        bankName: string;
+        accountLabel: string;
+        accountType: string;
+      } | null = null;
+
+      if (sourceAccountId) {
+        sourceAccount = await tx.financialAccount.findFirst({
+          where: {
+            id: sourceAccountId,
+            userId,
+          },
           select: {
             id: true,
-            username: true,
-            fullName: true,
+            bankName: true,
+            accountLabel: true,
+            accountType: true,
+          },
+        });
+
+        if (!sourceAccount) {
+          throw new HttpError(
+            404,
+            'La cuenta origen no existe o no te pertenece',
+          );
+        }
+
+        const availableBalance = await this.getFinancialAccountBalance(
+          tx,
+          sourceAccount.id,
+        );
+
+        if (availableBalance < dto.amount) {
+          throw new HttpError(
+            400,
+            'La cuenta origen no tiene saldo suficiente',
+          );
+        }
+      }
+
+      const createdAllocation = await tx.trackingEntityAllocation.create({
+        data: {
+          entityId: entity.id,
+          amount: dto.amount,
+          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+          sourceLabel: this.optionalText(dto.sourceLabel),
+          sourceAccountId: sourceAccount?.id ?? null,
+          performedById: userId,
+        },
+        include: {
+          performedBy: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+            },
+          },
+          sourceAccount: {
+            select: {
+              id: true,
+              bankName: true,
+              accountLabel: true,
+              accountType: true,
+            },
           },
         },
-      },
+      });
+
+      if (sourceAccount) {
+        await tx.financialAccountMovement.create({
+          data: {
+            accountId: sourceAccount.id,
+            movementType: 'ALLOCATION_DEBIT',
+            category: 'Asignacion a entidad',
+            amount: dto.amount,
+            sourceLabel:
+              this.optionalText(dto.sourceLabel) ??
+              `Asignacion para ${entity.name}`,
+            occurredAt: createdAllocation.occurredAt,
+            performedById: userId,
+            entityAllocationId: createdAllocation.id,
+          },
+        });
+      }
+
+      return createdAllocation;
     });
 
     await this.auditService.log({
@@ -363,6 +452,7 @@ export class EntitiesService {
         amount: Number(allocation.amount),
         occurredAt: allocation.occurredAt,
         sourceLabel: allocation.sourceLabel,
+        sourceAccountId: allocation.sourceAccount?.id ?? null,
       },
     });
 
@@ -370,6 +460,14 @@ export class EntitiesService {
       id: allocation.id,
       amount: Number(allocation.amount),
       sourceLabel: allocation.sourceLabel,
+      sourceAccount: allocation.sourceAccount
+        ? {
+            id: allocation.sourceAccount.id,
+            bankName: allocation.sourceAccount.bankName,
+            accountLabel: allocation.sourceAccount.accountLabel,
+            accountType: allocation.sourceAccount.accountType,
+          }
+        : null,
       occurredAt: allocation.occurredAt,
       createdAt: allocation.createdAt,
       updatedAt: allocation.updatedAt,
@@ -448,6 +546,15 @@ export class EntitiesService {
       where: { id: allocationId },
       include: {
         entity: true,
+        sourceAccount: {
+          select: {
+            id: true,
+            bankName: true,
+            accountLabel: true,
+            accountType: true,
+          },
+        },
+        sourceAccountMovement: true,
         performedBy: {
           select: {
             id: true,
@@ -465,16 +572,38 @@ export class EntitiesService {
     const access = await this.getEntityAccess(allocation.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
-    const updatedAllocation = await this.prisma.trackingEntityAllocation.update(
-      {
+    const updatedAllocation = await this.prisma.$transaction(async (tx) => {
+      const nextAmount = dto.amount ?? Number(allocation.amount);
+      const nextOccurredAt = dto.occurredAt
+        ? new Date(dto.occurredAt)
+        : allocation.occurredAt;
+      const nextSourceLabel =
+        dto.sourceLabel !== undefined
+          ? this.optionalText(dto.sourceLabel)
+          : allocation.sourceLabel;
+
+      if (allocation.sourceAccountId) {
+        const availableBalance = await this.getFinancialAccountBalance(
+          tx,
+          allocation.sourceAccountId,
+          allocation.id,
+        );
+
+        if (availableBalance < nextAmount) {
+          throw new HttpError(
+            400,
+            'La cuenta origen no tiene saldo suficiente',
+          );
+        }
+      }
+
+      const nextAllocation = await tx.trackingEntityAllocation.update({
         where: { id: allocation.id },
         data: {
           amount: dto.amount ?? undefined,
-          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+          occurredAt: dto.occurredAt ? nextOccurredAt : undefined,
           sourceLabel:
-            dto.sourceLabel !== undefined
-              ? this.optionalText(dto.sourceLabel)
-              : undefined,
+            dto.sourceLabel !== undefined ? nextSourceLabel : undefined,
         },
         include: {
           performedBy: {
@@ -484,9 +613,33 @@ export class EntitiesService {
               fullName: true,
             },
           },
+          sourceAccount: {
+            select: {
+              id: true,
+              bankName: true,
+              accountLabel: true,
+              accountType: true,
+            },
+          },
         },
-      },
-    );
+      });
+
+      if (allocation.sourceAccountMovement) {
+        await tx.financialAccountMovement.update({
+          where: {
+            id: allocation.sourceAccountMovement.id,
+          },
+          data: {
+            amount: nextAmount,
+            occurredAt: nextOccurredAt,
+            sourceLabel:
+              nextSourceLabel ?? `Asignacion para ${allocation.entity.name}`,
+          },
+        });
+      }
+
+      return nextAllocation;
+    });
 
     await this.auditService.log({
       entityName: 'TrackingEntityAllocation',
@@ -498,11 +651,13 @@ export class EntitiesService {
         amount: Number(allocation.amount),
         occurredAt: allocation.occurredAt,
         sourceLabel: allocation.sourceLabel,
+        sourceAccountId: allocation.sourceAccount?.id ?? null,
       },
       after: {
         amount: Number(updatedAllocation.amount),
         occurredAt: updatedAllocation.occurredAt,
         sourceLabel: updatedAllocation.sourceLabel,
+        sourceAccountId: updatedAllocation.sourceAccount?.id ?? null,
       },
     });
 
@@ -510,6 +665,14 @@ export class EntitiesService {
       id: updatedAllocation.id,
       amount: Number(updatedAllocation.amount),
       sourceLabel: updatedAllocation.sourceLabel,
+      sourceAccount: updatedAllocation.sourceAccount
+        ? {
+            id: updatedAllocation.sourceAccount.id,
+            bankName: updatedAllocation.sourceAccount.bankName,
+            accountLabel: updatedAllocation.sourceAccount.accountLabel,
+            accountType: updatedAllocation.sourceAccount.accountType,
+          }
+        : null,
       occurredAt: updatedAllocation.occurredAt,
       createdAt: updatedAllocation.createdAt,
       updatedAt: updatedAllocation.updatedAt,
@@ -955,5 +1118,36 @@ export class EntitiesService {
 
   private normalizeUsername(value: string) {
     return value.trim().replace(/^@+/, '').toLowerCase();
+  }
+
+  private async getFinancialAccountBalance(
+    tx: Prisma.TransactionClient | PrismaService,
+    accountId: string,
+    excludeAllocationId?: string,
+  ) {
+    const movements = await tx.financialAccountMovement.findMany({
+      where: {
+        accountId,
+        ...(excludeAllocationId
+          ? {
+              NOT: {
+                entityAllocationId: excludeAllocationId,
+              },
+            }
+          : {}),
+      },
+      select: {
+        movementType: true,
+        amount: true,
+      },
+    });
+
+    return movements.reduce((accumulator, movement) => {
+      const amount = Number(movement.amount);
+
+      return movement.movementType === 'ALLOCATION_DEBIT'
+        ? accumulator - amount
+        : accumulator + amount;
+    }, 0);
   }
 }

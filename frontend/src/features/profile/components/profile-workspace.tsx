@@ -129,6 +129,7 @@ export function ProfileWorkspace() {
     },
     onSuccess: (nextProfile) => {
       updateUser({
+        id: nextProfile.id,
         sub: nextProfile.id,
         username: nextProfile.username,
         role: nextProfile.role,

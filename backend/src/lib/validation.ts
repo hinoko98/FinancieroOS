@@ -12,6 +12,12 @@ const USER_ICON_OPTIONS = [
 const THEME_PRESETS = ['LIGHT', 'DARK', 'CUSTOM'] as const;
 const THEME_BASE_PRESETS = ['LIGHT', 'DARK'] as const;
 const ENTITY_SHARE_PERMISSIONS = ['VIEW', 'EDIT', 'MANAGE'] as const;
+const FINANCIAL_ACCOUNT_TYPES = [
+  'AHORROS',
+  'CORRIENTE',
+  'BILLETERA',
+  'OTRO',
+] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 
 type PlainObject = Record<string, unknown>;
@@ -96,6 +102,7 @@ export type CreateEntityAllocationInput = {
   amount: number;
   occurredAt?: string;
   sourceLabel?: string;
+  sourceAccountId?: string;
 };
 
 export type UpdateEntityRecordInput = {
@@ -106,6 +113,20 @@ export type UpdateEntityRecordInput = {
 export type UpdateEntityAllocationInput = {
   amount?: number;
   occurredAt?: string;
+  sourceLabel?: string;
+};
+
+export type CreateFinancialAccountInput = {
+  bankName: string;
+  accountLabel: string;
+  accountType: (typeof FINANCIAL_ACCOUNT_TYPES)[number];
+  accountMask?: string;
+};
+
+export type CreateFinancialIncomeInput = {
+  amount: number;
+  occurredAt?: string;
+  category?: string;
   sourceLabel?: string;
 };
 
@@ -653,7 +674,12 @@ export function parseCreateEntityAllocationInput(
   value: unknown,
 ): CreateEntityAllocationInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt', 'sourceLabel']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'sourceLabel',
+    'sourceAccountId',
+  ]);
 
   return {
     amount: readRequiredNumber(payload, 'amount', {
@@ -662,6 +688,9 @@ export function parseCreateEntityAllocationInput(
     }),
     occurredAt: readOptionalDateString(payload, 'occurredAt'),
     sourceLabel: readOptionalString(payload, 'sourceLabel', {
+      maxLength: 120,
+    }),
+    sourceAccountId: readOptionalString(payload, 'sourceAccountId', {
       maxLength: 120,
     }),
   };
@@ -698,6 +727,63 @@ export function parseUpdateEntityAllocationInput(
     occurredAt: readOptionalDateString(payload, 'occurredAt'),
     sourceLabel: readUpdatableString(payload, 'sourceLabel', {
       maxLength: 120,
+    }),
+  };
+}
+
+export function parseCreateFinancialAccountInput(
+  value: unknown,
+): CreateFinancialAccountInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'bankName',
+    'accountLabel',
+    'accountType',
+    'accountMask',
+  ]);
+
+  return {
+    bankName: readRequiredString(payload, 'bankName', {
+      minLength: 2,
+      maxLength: 120,
+    }),
+    accountLabel: readRequiredString(payload, 'accountLabel', {
+      minLength: 2,
+      maxLength: 120,
+    }),
+    accountType: readRequiredEnum(
+      payload,
+      'accountType',
+      FINANCIAL_ACCOUNT_TYPES,
+    ),
+    accountMask: readOptionalString(payload, 'accountMask', {
+      maxLength: 12,
+    }),
+  };
+}
+
+export function parseCreateFinancialIncomeInput(
+  value: unknown,
+): CreateFinancialIncomeInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'category',
+    'sourceLabel',
+  ]);
+
+  return {
+    amount: readRequiredNumber(payload, 'amount', {
+      min: 0,
+      maxDecimalPlaces: 2,
+    }),
+    occurredAt: readOptionalDateString(payload, 'occurredAt'),
+    category: readOptionalString(payload, 'category', {
+      maxLength: 60,
+    }),
+    sourceLabel: readOptionalString(payload, 'sourceLabel', {
+      maxLength: 160,
     }),
   };
 }

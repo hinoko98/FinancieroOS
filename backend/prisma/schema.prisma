@@ -45,6 +45,18 @@ enum EntitySharePermission {
   MANAGE
 }
 
+enum FinancialAccountType {
+  AHORROS
+  CORRIENTE
+  BILLETERA
+  OTRO
+}
+
+enum FinancialMovementType {
+  INCOME
+  ALLOCATION_DEBIT
+}
+
 model User {
   id                   String                 @id @default(uuid())
   username             String                 @unique
@@ -64,6 +76,8 @@ model User {
   trackingItemsCreated TrackingEntityItem[]   @relation("TrackingEntityItemCreatedBy")
   trackingRecordsMade  TrackingEntityRecord[] @relation("TrackingEntityRecordPerformedBy")
   entityAllocations    TrackingEntityAllocation[] @relation("TrackingEntityAllocationPerformedBy")
+  financialAccounts    FinancialAccount[]
+  financialMovements   FinancialAccountMovement[] @relation("FinancialAccountMovementPerformedBy")
   entitySharesReceived TrackingEntityShare[]  @relation("TrackingEntityShareUser")
   entitySharesGranted  TrackingEntityShare[]  @relation("TrackingEntityShareGrantedBy")
   settings             UserSetting?
@@ -129,14 +143,54 @@ model TrackingEntityAllocation {
   entityId      String
   amount        Decimal        @db.Decimal(18, 2)
   sourceLabel   String?
+  sourceAccountId String?
   occurredAt    DateTime
   performedById String
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   entity        TrackingEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  sourceAccount FinancialAccount? @relation("TrackingEntityAllocationSourceAccount", fields: [sourceAccountId], references: [id], onDelete: SetNull)
+  sourceAccountMovement FinancialAccountMovement? @relation("FinancialAccountMovementAllocation")
   performedBy   User           @relation("TrackingEntityAllocationPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
 
   @@index([entityId, occurredAt])
+  @@index([performedById, occurredAt])
+  @@index([sourceAccountId, occurredAt])
+}
+
+model FinancialAccount {
+  id           String                 @id @default(uuid())
+  userId       String
+  bankName     String
+  accountLabel String
+  accountType  FinancialAccountType   @default(AHORROS)
+  accountMask  String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  movements    FinancialAccountMovement[]
+  allocations  TrackingEntityAllocation[] @relation("TrackingEntityAllocationSourceAccount")
+
+  @@index([userId, createdAt])
+}
+
+model FinancialAccountMovement {
+  id                 String                @id @default(uuid())
+  accountId          String
+  movementType       FinancialMovementType
+  category           String?
+  amount             Decimal               @db.Decimal(18, 2)
+  sourceLabel        String?
+  occurredAt         DateTime
+  performedById      String
+  entityAllocationId String?               @unique
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  account            FinancialAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  performedBy        User                  @relation("FinancialAccountMovementPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
+  entityAllocation   TrackingEntityAllocation? @relation("FinancialAccountMovementAllocation", fields: [entityAllocationId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, occurredAt])
   @@index([performedById, occurredAt])
 }
 

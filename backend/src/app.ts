@@ -10,18 +10,21 @@ import { errorMiddleware } from './middlewares/error.middleware';
 import { createAuditRouter } from './routes/audit.routes';
 import { createAuthRouter } from './routes/auth.routes';
 import { createEntitiesRouter } from './routes/entities.routes';
+import { createFinanceRouter } from './routes/finance.routes';
 import { createHealthRouter } from './routes/health.routes';
 import { createSettingsRouter } from './routes/settings.routes';
 import { createSystemRouter } from './routes/system.routes';
 import type { AuditService } from './services/audit.service';
 import type { AuthService } from './services/auth.service';
 import type { EntitiesService } from './services/entities.service';
+import type { FinanceService } from './services/finance.service';
 import type { SettingsService } from './services/settings.service';
 
 type AppServices = {
   authService: AuthService;
   auditService: AuditService;
   entitiesService: EntitiesService;
+  financeService: FinanceService;
   settingsService: SettingsService;
 };
 
@@ -56,6 +59,10 @@ export function createApp(config: AppConfig, services: AppServices) {
   app.use(
     '/api/v1/entities',
     createEntitiesRouter(services.entitiesService, config.jwtSecret),
+  );
+  app.use(
+    '/api/v1/finance',
+    createFinanceRouter(services.financeService, config.jwtSecret),
   );
   app.use(
     '/api/v1/settings',

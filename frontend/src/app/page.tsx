@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Building2,
   ClipboardList,
+  HandCoins,
   ReceiptText,
   UserRound,
 } from 'lucide-react';
@@ -202,6 +203,8 @@ export default function HomePage() {
                 <div className="rounded-full bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
                   {module.href === '/entidades' ? (
                     <Building2 className="h-5 w-5" />
+                  ) : module.href === '/ingresos' ? (
+                    <HandCoins className="h-5 w-5" />
                   ) : module.href === '/registro-general' ? (
                     <ClipboardList className="h-5 w-5" />
                   ) : (

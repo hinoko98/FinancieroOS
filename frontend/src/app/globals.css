@@ -1,6 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 :root {
+  --font-sans: 'Manrope';
+  --font-mono: 'IBM Plex Mono';
   --color-surface: #eadfce;
   --color-panel: #faf4eb;
   --color-panel-strong: #fffaf4;
@@ -31,6 +34,7 @@
 }
 
 body {
+  margin: 0;
   background:
     radial-gradient(circle at top left, rgba(154, 106, 31, 0.18), transparent 30%),
     radial-gradient(circle at bottom right, rgba(111, 78, 55, 0.16), transparent 32%),

@@ -23,6 +23,11 @@ import { StatusPill } from '@/components/ui/status-pill';
 import { apiClient } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/auth-provider';
 import {
+  FINANCE_ACCOUNTS_QUERY_KEY,
+  getFinancialAccountTypeLabel,
+  type FinancialAccount,
+} from '@/features/finance/lib/finance';
+import {
   ENTITIES_QUERY_KEY,
   extractApiErrorMessage,
   formatCurrency,
@@ -125,6 +130,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
     amount: '',
     occurredAt: '',
     sourceLabel: '',
+    sourceAccountId: '',
   });
   const [movementForm, setMovementForm] = useState({
     amount: '',
@@ -143,6 +149,15 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
     queryKey: ENTITIES_QUERY_KEY,
     queryFn: async () => {
       const response = await apiClient.get<Entity[]>('/entities');
+      return response.data;
+    },
+    enabled: Boolean(user),
+  });
+
+  const financeAccountsQuery = useQuery({
+    queryKey: FINANCE_ACCOUNTS_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiClient.get<FinancialAccount[]>('/finance/accounts');
       return response.data;
     },
     enabled: Boolean(user),
@@ -203,15 +218,20 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       amount: number;
       occurredAt?: string;
       sourceLabel?: string;
+      sourceAccountId?: string;
     }) => {
       await apiClient.post(`/entities/${entityId}/allocations`, payload);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: FINANCE_ACCOUNTS_QUERY_KEY }),
+      ]);
       setAllocationForm({
         amount: '',
         occurredAt: '',
         sourceLabel: '',
+        sourceAccountId: '',
       });
       setAllocationError(null);
       setAllocationModalOpen(false);
@@ -243,7 +263,10 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: FINANCE_ACCOUNTS_QUERY_KEY }),
+      ]);
       setMovementForm({
         amount: '',
         occurredAt: '',
@@ -364,6 +387,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         ? new Date(allocationForm.occurredAt).toISOString()
         : undefined,
       sourceLabel: allocationForm.sourceLabel || undefined,
+      sourceAccountId: allocationForm.sourceAccountId || undefined,
     });
   };
 
@@ -562,6 +586,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                   amount: '',
                   occurredAt: toDateTimeLocalValue(new Date()),
                   sourceLabel: '',
+                  sourceAccountId: '',
                 });
                 setAllocationModalOpen(true);
               }}
@@ -929,6 +954,29 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           </div>
 
           <label className="space-y-2 text-sm">
+            <span className="font-semibold">Cuenta origen</span>
+            <select
+              value={allocationForm.sourceAccountId}
+              onChange={(event) =>
+                setAllocationForm((current) => ({
+                  ...current,
+                  sourceAccountId: event.target.value,
+                }))
+              }
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+            >
+              <option value="">Selecciona una cuenta</option>
+              {(financeAccountsQuery.data ?? []).map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.accountLabel} / {account.bankName} /{' '}
+                  {getFinancialAccountTypeLabel(account.accountType)} / Disponible{' '}
+                  {formatCurrency(account.balance)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm">
             <span className="font-semibold">Origen o detalle</span>
             <input
               value={allocationForm.sourceLabel}
@@ -942,6 +990,11 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               placeholder="Retiro BBVA marzo"
             />
           </label>
+
+          <p className="text-xs text-[var(--color-muted)]">
+            Al guardar la asignacion, el valor se descuenta de la cuenta origen y
+            queda trazado tanto en la entidad como en el registro general.
+          </p>
 
           {allocationError ? (
             <p className="text-sm text-[var(--color-danger)]">{allocationError}</p>

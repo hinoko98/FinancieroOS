@@ -7,17 +7,23 @@ export const dashboardModules: DashboardModule[] = [
     description: 'Control principal',
     emphasis: 'Entidades',
   },
+    {
+    title: 'Ingresos',
+    href: '/ingresos',
+    description: 'Sueldo y extras',
+    emphasis: 'Ingresos',
+  },
+    {
+    title: 'Compartidos',
+    href: '/compartidos',
+    description: 'Permisos',
+    emphasis: 'Compartidos',
+  },
   {
     title: 'Registro general',
     href: '/registro-general',
     description: 'Gastos',
     emphasis: 'Registro general',
-  },
-  {
-    title: 'Compartidos',
-    href: '/compartidos',
-    description: 'Permisos',
-    emphasis: 'Compartidos',
   },
   {
     title: 'Configuracion',
