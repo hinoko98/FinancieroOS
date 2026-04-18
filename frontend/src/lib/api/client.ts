@@ -1,10 +1,14 @@
 import axios from 'axios';
 
-const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+function normalizeApiBaseUrl(value: string) {
+  return value.trim().replace(/\/+$/, '');
+}
+
+const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
 const apiBaseUrl =
-  configuredApiUrl && /^https?:\/\//i.test(configuredApiUrl)
-    ? configuredApiUrl
-    : 'http://localhost:3000/api/v1';
+  configuredApiUrl && configuredApiUrl.length > 0
+    ? normalizeApiBaseUrl(configuredApiUrl)
+    : '/api/v1';
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,

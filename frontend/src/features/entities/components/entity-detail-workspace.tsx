@@ -21,7 +21,14 @@ import { Modal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusPill } from '@/components/ui/status-pill';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
+import {
+  FINANCE_ACCOUNTS_QUERY_KEY,
+  FINANCE_CATALOG_QUERY_KEY,
+  getFinancialAccountTypeLabel,
+  type FinancialAccount,
+  type FinancialCatalog,
+} from '@/features/finance/lib/finance';
 import {
   ENTITIES_QUERY_KEY,
   extractApiErrorMessage,
@@ -120,16 +127,21 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
     itemName: '',
     amount: '',
     occurredAt: '',
+    categoryId: '',
+    subcategoryId: '',
   });
   const [allocationForm, setAllocationForm] = useState({
     amount: '',
     occurredAt: '',
     sourceLabel: '',
+    sourceAccountId: '',
   });
   const [movementForm, setMovementForm] = useState({
     amount: '',
     occurredAt: '',
     sourceLabel: '',
+    categoryId: '',
+    subcategoryId: '',
   });
   const [historyFilters, setHistoryFilters] = useState({
     range: 'all' as HistoryRange,
@@ -148,6 +160,25 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
     enabled: Boolean(user),
   });
 
+  const financeAccountsQuery = useQuery({
+    queryKey: FINANCE_ACCOUNTS_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiClient.get<FinancialAccount[]>('/finance/accounts');
+      return response.data;
+    },
+    enabled: Boolean(user),
+  });
+
+  const financeCatalogQuery = useQuery({
+    queryKey: FINANCE_CATALOG_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiClient.get<FinancialCatalog>('/finance/catalog');
+      return response.data;
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
+  });
+
   const entity = useMemo(
     () => entitiesQuery.data?.find((current) => current.id === entityId) ?? null,
     [entitiesQuery.data, entityId],
@@ -158,6 +189,28 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       entity?.items.find((currentItem) => currentItem.id === selectedServiceId) ??
       null,
     [entity, selectedServiceId],
+  );
+
+  const expenseCategories = useMemo(
+    () =>
+      (financeCatalogQuery.data?.categories ?? []).filter(
+        (category) => category.direction === 'EXPENSE',
+      ),
+    [financeCatalogQuery.data?.categories],
+  );
+
+  const selectedPaymentCategory = useMemo(
+    () =>
+      expenseCategories.find((category) => category.id === paymentForm.categoryId) ??
+      null,
+    [expenseCategories, paymentForm.categoryId],
+  );
+
+  const selectedMovementCategory = useMemo(
+    () =>
+      expenseCategories.find((category) => category.id === movementForm.categoryId) ??
+      null,
+    [expenseCategories, movementForm.categoryId],
   );
 
   const createServiceMutation = useMutation({
@@ -176,10 +229,18 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
   });
 
   const createPaymentMutation = useMutation({
-    mutationFn: async (payload: { itemId: string; amount: number; occurredAt?: string }) => {
+    mutationFn: async (payload: {
+      itemId: string;
+      amount: number;
+      occurredAt?: string;
+      categoryId?: string;
+      subcategoryId?: string;
+    }) => {
       await apiClient.post(`/entities/items/${payload.itemId}/records`, {
         amount: payload.amount,
         occurredAt: payload.occurredAt,
+        categoryId: payload.categoryId,
+        subcategoryId: payload.subcategoryId,
       });
     },
     onSuccess: async () => {
@@ -189,6 +250,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         itemName: '',
         amount: '',
         occurredAt: '',
+        categoryId: '',
+        subcategoryId: '',
       });
       setPaymentError(null);
       setPaymentModalOpen(false);
@@ -203,15 +266,20 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       amount: number;
       occurredAt?: string;
       sourceLabel?: string;
+      sourceAccountId?: string;
     }) => {
       await apiClient.post(`/entities/${entityId}/allocations`, payload);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: FINANCE_ACCOUNTS_QUERY_KEY }),
+      ]);
       setAllocationForm({
         amount: '',
         occurredAt: '',
         sourceLabel: '',
+        sourceAccountId: '',
       });
       setAllocationError(null);
       setAllocationModalOpen(false);
@@ -227,6 +295,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       amount: number;
       occurredAt?: string;
       sourceLabel?: string;
+      categoryId?: string;
+      subcategoryId?: string;
     }) => {
       if (payload.movement.movementType === 'allocation') {
         await apiClient.patch(`/entities/allocations/${payload.movement.id}`, {
@@ -240,14 +310,21 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       await apiClient.patch(`/entities/records/${payload.movement.id}`, {
         amount: payload.amount,
         occurredAt: payload.occurredAt,
+        categoryId: payload.categoryId,
+        subcategoryId: payload.subcategoryId,
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ENTITIES_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: FINANCE_ACCOUNTS_QUERY_KEY }),
+      ]);
       setMovementForm({
         amount: '',
         occurredAt: '',
         sourceLabel: '',
+        categoryId: '',
+        subcategoryId: '',
       });
       setMovementError(null);
       setEditingMovement(null);
@@ -265,6 +342,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       itemName: item.name,
       amount: '',
       occurredAt: toDateTimeLocalValue(new Date()),
+      categoryId: '',
+      subcategoryId: '',
     });
     setPaymentModalOpen(true);
   };
@@ -289,6 +368,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       amount: entry.creditAmount.toString(),
       occurredAt: toDateTimeLocalValue(new Date(entry.occurredAt)),
       sourceLabel: entry.label === 'Asignacion de fondos' ? '' : entry.label,
+      categoryId: '',
+      subcategoryId: '',
     });
     setMovementEditorOpen(true);
   };
@@ -297,6 +378,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
     id: string;
     amount: number;
     occurredAt: string;
+    financialCategory: EntityItem['records'][number]['financialCategory'];
+    financialSubcategory: EntityItem['records'][number]['financialSubcategory'];
   }, item: EntityItem) => {
     setMovementError(null);
     setEditingMovement({
@@ -309,6 +392,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       amount: record.amount.toString(),
       occurredAt: toDateTimeLocalValue(new Date(record.occurredAt)),
       sourceLabel: '',
+      categoryId: record.financialCategory?.id ?? '',
+      subcategoryId: record.financialSubcategory?.id ?? '',
     });
     setMovementEditorOpen(true);
   };
@@ -329,6 +414,10 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         id: entry.id,
         amount: entry.debitAmount,
         occurredAt: entry.occurredAt,
+        financialCategory:
+          item.records.find((record) => record.id === entry.id)?.financialCategory ?? null,
+        financialSubcategory:
+          item.records.find((record) => record.id === entry.id)?.financialSubcategory ?? null,
       },
       item,
     );
@@ -352,6 +441,8 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       occurredAt: paymentForm.occurredAt
         ? new Date(paymentForm.occurredAt).toISOString()
         : undefined,
+      categoryId: paymentForm.categoryId || undefined,
+      subcategoryId: paymentForm.subcategoryId || undefined,
     });
   };
 
@@ -364,6 +455,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
         ? new Date(allocationForm.occurredAt).toISOString()
         : undefined,
       sourceLabel: allocationForm.sourceLabel || undefined,
+      sourceAccountId: allocationForm.sourceAccountId || undefined,
     });
   };
 
@@ -384,6 +476,14 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
       sourceLabel:
         editingMovement.movementType === 'allocation'
           ? movementForm.sourceLabel
+          : undefined,
+      categoryId:
+        editingMovement.movementType === 'payment'
+          ? movementForm.categoryId || undefined
+          : undefined,
+      subcategoryId:
+        editingMovement.movementType === 'payment'
+          ? movementForm.subcategoryId || undefined
           : undefined,
     });
   };
@@ -562,6 +662,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                   amount: '',
                   occurredAt: toDateTimeLocalValue(new Date()),
                   sourceLabel: '',
+                  sourceAccountId: '',
                 });
                 setAllocationModalOpen(true);
               }}
@@ -699,6 +800,21 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                                 <p className="text-lg font-bold text-[var(--color-success)]">
                                   {formatCurrency(record.amount)}
                                 </p>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {record.financialCategory ? (
+                                    <StatusPill
+                                      label={
+                                        record.financialSubcategory
+                                          ? `${record.financialCategory.name} / ${record.financialSubcategory.name}`
+                                          : record.financialCategory.name
+                                      }
+                                      tone="danger"
+                                    />
+                                  ) : null}
+                                  {record.period ? (
+                                    <StatusPill label={record.period.label} tone="warning" />
+                                  ) : null}
+                                </div>
                                 <div className="mt-2 flex flex-wrap gap-4 text-xs uppercase tracking-[0.16em] text-[var(--color-muted)]">
                                   <span className="inline-flex items-center gap-2">
                                     <CalendarClock className="h-3.5 w-3.5" />
@@ -714,7 +830,10 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                           </div>
 
                           <p className="max-w-sm text-sm text-[var(--color-muted)]">
-                            Pago aplicado al servicio {item.name}.
+                            Pago aplicado al servicio {item.name}
+                            {record.financialCategory
+                              ? ` con tipificacion ${record.financialSubcategory ? `${record.financialCategory.name} / ${record.financialSubcategory.name}` : record.financialCategory.name}.`
+                              : '.'}
                           </p>
                         </div>
                       </article>
@@ -857,6 +976,59 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
             </label>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-2 text-sm">
+              <span className="font-semibold">Categoria de egreso</span>
+              <select
+                value={paymentForm.categoryId}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    categoryId: event.target.value,
+                    subcategoryId: '',
+                  }))
+                }
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              >
+                <option value="">Sin categoria tipificada</option>
+                {expenseCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm">
+              <span className="font-semibold">Subcategoria</span>
+              <select
+                value={paymentForm.subcategoryId}
+                onChange={(event) =>
+                  setPaymentForm((current) => ({
+                    ...current,
+                    subcategoryId: event.target.value,
+                  }))
+                }
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none disabled:cursor-not-allowed disabled:bg-[var(--color-panel-strong)]"
+                disabled={
+                  !selectedPaymentCategory ||
+                  selectedPaymentCategory.subcategories.length === 0
+                }
+              >
+                <option value="">
+                  {selectedPaymentCategory
+                    ? 'Sin subcategoria'
+                    : 'Selecciona primero una categoria'}
+                </option>
+                {selectedPaymentCategory?.subcategories.map((subcategory) => (
+                  <option key={subcategory.id} value={subcategory.id}>
+                    {subcategory.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           <label className="space-y-2 text-sm">
             <span className="font-semibold">Realizado por</span>
             <input
@@ -865,6 +1037,13 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
             />
           </label>
+
+          {financeCatalogQuery.isSuccess && expenseCategories.length === 0 ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              No hay categorias de egreso configuradas todavia. Un administrador
+              puede crearlas desde <strong>Administracion</strong>.
+            </p>
+          ) : null}
 
           {paymentError ? (
             <p className="text-sm text-[var(--color-danger)]">{paymentError}</p>
@@ -929,6 +1108,29 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
           </div>
 
           <label className="space-y-2 text-sm">
+            <span className="font-semibold">Cuenta origen</span>
+            <select
+              value={allocationForm.sourceAccountId}
+              onChange={(event) =>
+                setAllocationForm((current) => ({
+                  ...current,
+                  sourceAccountId: event.target.value,
+                }))
+              }
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+            >
+              <option value="">Selecciona una cuenta</option>
+              {(financeAccountsQuery.data ?? []).map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.accountLabel} / {account.bankName} /{' '}
+                  {getFinancialAccountTypeLabel(account.accountType)} / Disponible{' '}
+                  {formatCurrency(account.balance)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm">
             <span className="font-semibold">Origen o detalle</span>
             <input
               value={allocationForm.sourceLabel}
@@ -942,6 +1144,11 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               placeholder="Retiro BBVA marzo"
             />
           </label>
+
+          <p className="text-xs text-[var(--color-muted)]">
+            Al guardar la asignacion, el valor se descuenta de la cuenta origen y
+            queda trazado tanto en la entidad como en el registro general.
+          </p>
 
           {allocationError ? (
             <p className="text-sm text-[var(--color-danger)]">{allocationError}</p>
@@ -995,6 +1202,7 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                   <thead className="bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]">
                     <tr className="text-sm">
                       <th className="px-5 py-4 font-semibold">Fecha</th>
+                      <th className="px-5 py-4 font-semibold">Clasificacion</th>
                       <th className="px-5 py-4 font-semibold">Responsable</th>
                       <th className="px-5 py-4 font-semibold">Valor</th>
                       <th className="px-5 py-4 font-semibold">Accion</th>
@@ -1008,6 +1216,18 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                       >
                         <td className="px-5 py-4 text-[var(--color-muted)]">
                           {formatDateTime(record.occurredAt)}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="space-y-1">
+                            <p className="font-semibold">
+                              {record.financialSubcategory
+                                ? `${record.financialCategory?.name ?? 'Sin categoria'} / ${record.financialSubcategory.name}`
+                                : record.financialCategory?.name ?? 'Sin categoria'}
+                            </p>
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {record.period?.label ?? 'Periodo automatico'}
+                            </p>
+                          </div>
                         </td>
                         <td className="px-5 py-4">{record.performedBy.fullName}</td>
                         <td className="px-5 py-4 font-bold text-[var(--color-success)]">
@@ -1220,6 +1440,16 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
                                   {entry.secondaryLabel}
                                 </p>
                               ) : null}
+                              {entry.classificationLabel ? (
+                                <p className="mt-1 text-xs text-[var(--color-brand-deep)]">
+                                  {entry.classificationLabel}
+                                </p>
+                              ) : null}
+                              {entry.periodLabel ? (
+                                <p className="mt-1 text-xs text-[var(--color-muted)]">
+                                  {entry.periodLabel}
+                                </p>
+                              ) : null}
                             </div>
                           </td>
                           <td className="px-5 py-4">{entry.performedBy.fullName}</td>
@@ -1319,6 +1549,61 @@ export function EntityDetailWorkspace({ entityId }: { entityId: string }) {
               />
             </label>
           </div>
+
+          {editingMovement?.movementType === 'payment' ? (
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2 text-sm">
+                <span className="font-semibold">Categoria de egreso</span>
+                <select
+                  value={movementForm.categoryId}
+                  onChange={(event) =>
+                    setMovementForm((current) => ({
+                      ...current,
+                      categoryId: event.target.value,
+                      subcategoryId: '',
+                    }))
+                  }
+                  className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                >
+                  <option value="">Mantener sin categoria</option>
+                  {expenseCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-2 text-sm">
+                <span className="font-semibold">Subcategoria</span>
+                <select
+                  value={movementForm.subcategoryId}
+                  onChange={(event) =>
+                    setMovementForm((current) => ({
+                      ...current,
+                      subcategoryId: event.target.value,
+                    }))
+                  }
+                  className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none disabled:cursor-not-allowed disabled:bg-[var(--color-panel-strong)]"
+                  disabled={
+                    !selectedMovementCategory ||
+                    selectedMovementCategory.subcategories.length === 0
+                  }
+                >
+                  <option value="">
+                    {selectedMovementCategory
+                      ? 'Sin subcategoria'
+                      : 'Selecciona primero una categoria'}
+                  </option>
+                  {selectedMovementCategory?.subcategories.map((subcategory) => (
+                    <option key={subcategory.id} value={subcategory.id}>
+                      {subcategory.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ) : null}
 
           {editingMovement?.movementType === 'allocation' ? (
             <label className="space-y-2 text-sm">

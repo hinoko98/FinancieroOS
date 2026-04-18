@@ -9,23 +9,36 @@ const USER_ICON_OPTIONS = [
   'badge-dollar-sign',
 ] as const;
 
-const THEME_PRESETS = ['LIGHT', 'DARK', 'CUSTOM'] as const;
+const THEME_PRESETS = ['LIGHT', 'DARK', 'GRAPHITE', 'CUSTOM'] as const;
 const THEME_BASE_PRESETS = ['LIGHT', 'DARK'] as const;
 const ENTITY_SHARE_PERMISSIONS = ['VIEW', 'EDIT', 'MANAGE'] as const;
+const USER_ROLES = ['ADMIN', 'MANAGER', 'ANALYST', 'OPERATOR'] as const;
+const RECORD_STATUSES = ['ACTIVE', 'INACTIVE', 'ARCHIVED'] as const;
+const FINANCIAL_ACCOUNT_TYPES = [
+  'AHORROS',
+  'CORRIENTE',
+  'BILLETERA',
+  'OTRO',
+] as const;
+const FINANCIAL_ENTRY_DIRECTIONS = ['INCOME', 'EXPENSE'] as const;
+const FINANCIAL_PERIOD_STATUSES = ['OPEN', 'CLOSED', 'ARCHIVED'] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type PlainObject = Record<string, unknown>;
 
 export type RegisterInput = {
   firstName: string;
   lastName: string;
+  email: string;
   nationalId: string;
   birthDate: string;
   password: string;
+  confirmPassword: string;
 };
 
 export type LoginInput = {
-  username: string;
+  identifier: string;
   password: string;
 };
 
@@ -67,6 +80,10 @@ export type UpdatePlatformSettingsInput = Partial<{
   supportEmail: string;
 }>;
 
+export type CreatePlatformBankInput = {
+  name: string;
+};
+
 export type CreateEntityShareInput = {
   username: string;
   permission: (typeof ENTITY_SHARE_PERMISSIONS)[number];
@@ -90,17 +107,22 @@ export type CreateEntityRecordInput = {
   amount: number;
   occurredAt?: string;
   notes?: string;
+  categoryId?: string;
+  subcategoryId?: string;
 };
 
 export type CreateEntityAllocationInput = {
   amount: number;
   occurredAt?: string;
   sourceLabel?: string;
+  sourceAccountId?: string;
 };
 
 export type UpdateEntityRecordInput = {
   amount?: number;
   occurredAt?: string;
+  categoryId?: string;
+  subcategoryId?: string;
 };
 
 export type UpdateEntityAllocationInput = {
@@ -108,6 +130,50 @@ export type UpdateEntityAllocationInput = {
   occurredAt?: string;
   sourceLabel?: string;
 };
+
+export type CreateFinancialAccountInput = {
+  bankName: string;
+  accountLabel: string;
+  accountType: (typeof FINANCIAL_ACCOUNT_TYPES)[number];
+  accountMask?: string;
+};
+
+export type CreateFinancialIncomeInput = {
+  amount: number;
+  occurredAt?: string;
+  categoryId?: string;
+  subcategoryId?: string;
+  sourceLabel?: string;
+};
+
+export type CreateFinancialPeriodInput = {
+  year: number;
+  month: number;
+  status?: (typeof FINANCIAL_PERIOD_STATUSES)[number];
+};
+
+export type CreateFinancialCategoryInput = {
+  direction: (typeof FINANCIAL_ENTRY_DIRECTIONS)[number];
+  name: string;
+  description?: string;
+};
+
+export type CreateFinancialSubcategoryInput = {
+  categoryId: string;
+  name: string;
+  description?: string;
+};
+
+export type UpdateManagedUserInput = Partial<{
+  username: string;
+  firstName: string;
+  lastName: string;
+  nationalId: string;
+  birthDate: string;
+  role: (typeof USER_ROLES)[number];
+  status: (typeof RECORD_STATUSES)[number];
+  newPassword: string;
+}>;
 
 function ensurePlainObject(value: unknown) {
   if (!value || Array.isArray(value) || typeof value !== 'object') {
@@ -226,6 +292,31 @@ function readRequiredDateString(payload: PlainObject, key: string) {
   return value;
 }
 
+function assertMinimumAge(
+  dateString: string,
+  minimumAge: number,
+  field: string,
+) {
+  const birthDate = new Date(dateString);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+
+  if (age < minimumAge) {
+    throw new HttpError(
+      400,
+      `El campo ${field} requiere una edad minima de ${minimumAge} anos`,
+    );
+  }
+}
+
 function readOptionalDateString(payload: PlainObject, key: string) {
   const value = payload[key];
 
@@ -288,6 +379,12 @@ function readOptionalNumber(
   }
 
   return readRequiredNumber(payload, key, options);
+}
+
+function assertInteger(value: number, field: string) {
+  if (!Number.isInteger(value)) {
+    throw new HttpError(400, `El campo ${field} debe ser un numero entero`);
+  }
 }
 
 function readOptionalEnum<T extends readonly string[]>(
@@ -388,10 +485,26 @@ export function parseRegisterInput(value: unknown): RegisterInput {
   assertAllowedKeys(payload, [
     'firstName',
     'lastName',
+    'email',
     'nationalId',
     'birthDate',
     'password',
+    'confirmPassword',
   ]);
+
+  const birthDate = readRequiredDateString(payload, 'birthDate');
+  const password = readRequiredString(payload, 'password', {
+    minLength: 8,
+  });
+  const confirmPassword = readRequiredString(payload, 'confirmPassword', {
+    minLength: 8,
+  });
+
+  if (password !== confirmPassword) {
+    throw new HttpError(400, 'La confirmacion de contrasena no coincide');
+  }
+
+  assertMinimumAge(birthDate, 14, 'birthDate');
 
   return {
     firstName: readRequiredString(payload, 'firstName', {
@@ -402,27 +515,31 @@ export function parseRegisterInput(value: unknown): RegisterInput {
       minLength: 2,
       maxLength: 60,
     }),
+    email: readRequiredString(payload, 'email', {
+      maxLength: 120,
+      pattern: EMAIL_REGEX,
+      patternMessage: 'El correo electronico no es valido',
+    }).toLowerCase(),
     nationalId: readRequiredString(payload, 'nationalId', {
       minLength: 6,
       maxLength: 20,
       pattern: /^[0-9]+$/,
       patternMessage: 'La cedula solo puede contener numeros',
     }),
-    birthDate: readRequiredDateString(payload, 'birthDate'),
-    password: readRequiredString(payload, 'password', {
-      minLength: 8,
-    }),
+    birthDate,
+    password,
+    confirmPassword,
   };
 }
 
 export function parseLoginInput(value: unknown): LoginInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['username', 'password']);
+  assertAllowedKeys(payload, ['identifier', 'password']);
 
   return {
-    username: readRequiredString(payload, 'username', {
+    identifier: readRequiredString(payload, 'identifier', {
       minLength: 3,
-      maxLength: 30,
+      maxLength: 120,
     }),
     password: readRequiredString(payload, 'password', {
       minLength: 8,
@@ -446,6 +563,9 @@ export function parseUpdateProfileInput(value: unknown): UpdateProfileInput {
   const payload = ensurePlainObject(value);
   assertAllowedKeys(payload, ['firstName', 'lastName', 'birthDate']);
 
+  const birthDate = readRequiredDateString(payload, 'birthDate');
+  assertMinimumAge(birthDate, 14, 'birthDate');
+
   return {
     firstName: readRequiredString(payload, 'firstName', {
       minLength: 2,
@@ -455,7 +575,7 @@ export function parseUpdateProfileInput(value: unknown): UpdateProfileInput {
       minLength: 2,
       maxLength: 60,
     }),
-    birthDate: readRequiredDateString(payload, 'birthDate'),
+    birthDate,
   };
 }
 
@@ -563,6 +683,20 @@ export function parseUpdatePlatformSettingsInput(
   };
 }
 
+export function parseCreatePlatformBankInput(
+  value: unknown,
+): CreatePlatformBankInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['name']);
+
+  return {
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+  };
+}
+
 export function parseCreateEntityShareInput(
   value: unknown,
 ): CreateEntityShareInput {
@@ -635,7 +769,27 @@ export function parseCreateEntityRecordInput(
   value: unknown,
 ): CreateEntityRecordInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt', 'notes']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'notes',
+    'categoryId',
+    'subcategoryId',
+  ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
 
   return {
     amount: readRequiredNumber(payload, 'amount', {
@@ -646,6 +800,8 @@ export function parseCreateEntityRecordInput(
     notes: readOptionalString(payload, 'notes', {
       maxLength: 280,
     }),
+    categoryId,
+    subcategoryId,
   };
 }
 
@@ -653,7 +809,12 @@ export function parseCreateEntityAllocationInput(
   value: unknown,
 ): CreateEntityAllocationInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt', 'sourceLabel']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'sourceLabel',
+    'sourceAccountId',
+  ]);
 
   return {
     amount: readRequiredNumber(payload, 'amount', {
@@ -664,6 +825,9 @@ export function parseCreateEntityAllocationInput(
     sourceLabel: readOptionalString(payload, 'sourceLabel', {
       maxLength: 120,
     }),
+    sourceAccountId: readOptionalString(payload, 'sourceAccountId', {
+      maxLength: 120,
+    }),
   };
 }
 
@@ -671,8 +835,32 @@ export function parseUpdateEntityRecordInput(
   value: unknown,
 ): UpdateEntityRecordInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt']);
-  assertAtLeastOneKey(payload, ['amount', 'occurredAt']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'categoryId',
+    'subcategoryId',
+  ]);
+  assertAtLeastOneKey(payload, [
+    'amount',
+    'occurredAt',
+    'categoryId',
+    'subcategoryId',
+  ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
 
   return {
     amount: readOptionalNumber(payload, 'amount', {
@@ -680,6 +868,8 @@ export function parseUpdateEntityRecordInput(
       maxDecimalPlaces: 2,
     }),
     occurredAt: readOptionalDateString(payload, 'occurredAt'),
+    categoryId,
+    subcategoryId,
   };
 }
 
@@ -699,5 +889,227 @@ export function parseUpdateEntityAllocationInput(
     sourceLabel: readUpdatableString(payload, 'sourceLabel', {
       maxLength: 120,
     }),
+  };
+}
+
+export function parseCreateFinancialAccountInput(
+  value: unknown,
+): CreateFinancialAccountInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'bankName',
+    'accountLabel',
+    'accountType',
+    'accountMask',
+  ]);
+
+  return {
+    bankName: readRequiredString(payload, 'bankName', {
+      minLength: 2,
+      maxLength: 120,
+    }),
+    accountLabel: readRequiredString(payload, 'accountLabel', {
+      minLength: 2,
+      maxLength: 120,
+    }),
+    accountType: readRequiredEnum(
+      payload,
+      'accountType',
+      FINANCIAL_ACCOUNT_TYPES,
+    ),
+    accountMask: readOptionalString(payload, 'accountMask', {
+      maxLength: 12,
+    }),
+  };
+}
+
+export function parseCreateFinancialIncomeInput(
+  value: unknown,
+): CreateFinancialIncomeInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'categoryId',
+    'subcategoryId',
+    'sourceLabel',
+  ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
+
+  return {
+    amount: readRequiredNumber(payload, 'amount', {
+      min: 0,
+      maxDecimalPlaces: 2,
+    }),
+    occurredAt: readOptionalDateString(payload, 'occurredAt'),
+    categoryId,
+    subcategoryId,
+    sourceLabel: readOptionalString(payload, 'sourceLabel', {
+      maxLength: 160,
+    }),
+  };
+}
+
+export function parseCreateFinancialPeriodInput(
+  value: unknown,
+): CreateFinancialPeriodInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['year', 'month', 'status']);
+
+  const year = readRequiredNumber(payload, 'year', { min: 2000 });
+  const month = readRequiredNumber(payload, 'month', { min: 1 });
+
+  assertInteger(year, 'year');
+  assertInteger(month, 'month');
+
+  if (month > 12) {
+    throw new HttpError(400, 'El campo month no puede ser mayor a 12');
+  }
+
+  return {
+    year,
+    month,
+    status: readOptionalEnum(payload, 'status', FINANCIAL_PERIOD_STATUSES),
+  };
+}
+
+export function parseCreateFinancialCategoryInput(
+  value: unknown,
+): CreateFinancialCategoryInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['direction', 'name', 'description']);
+
+  return {
+    direction: readRequiredEnum(
+      payload,
+      'direction',
+      FINANCIAL_ENTRY_DIRECTIONS,
+    ),
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+    description: readOptionalString(payload, 'description', {
+      maxLength: 180,
+    }),
+  };
+}
+
+export function parseCreateFinancialSubcategoryInput(
+  value: unknown,
+): CreateFinancialSubcategoryInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['categoryId', 'name', 'description']);
+
+  return {
+    categoryId: readRequiredString(payload, 'categoryId', {
+      minLength: 8,
+      maxLength: 120,
+    }),
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+    description: readOptionalString(payload, 'description', {
+      maxLength: 180,
+    }),
+  };
+}
+
+export function parseUpdateManagedUserInput(
+  value: unknown,
+): UpdateManagedUserInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, [
+    'username',
+    'firstName',
+    'lastName',
+    'nationalId',
+    'birthDate',
+    'role',
+    'status',
+    'newPassword',
+  ]);
+  assertAtLeastOneKey(payload, [
+    'username',
+    'firstName',
+    'lastName',
+    'nationalId',
+    'birthDate',
+    'role',
+    'status',
+    'newPassword',
+  ]);
+
+  const username = readUpdatableString(payload, 'username', {
+    maxLength: 30,
+  });
+  const firstName = readUpdatableString(payload, 'firstName', {
+    maxLength: 60,
+  });
+  const lastName = readUpdatableString(payload, 'lastName', {
+    maxLength: 60,
+  });
+  const nationalId = readUpdatableString(payload, 'nationalId', {
+    maxLength: 20,
+  });
+  const newPassword = readUpdatableString(payload, 'newPassword', {
+    maxLength: 120,
+  });
+
+  if (username !== undefined && username.length < 3) {
+    throw new HttpError(
+      400,
+      'El campo username debe tener minimo 3 caracteres',
+    );
+  }
+
+  if (firstName !== undefined && firstName.length < 2) {
+    throw new HttpError(
+      400,
+      'El campo firstName debe tener minimo 2 caracteres',
+    );
+  }
+
+  if (lastName !== undefined && lastName.length < 2) {
+    throw new HttpError(
+      400,
+      'El campo lastName debe tener minimo 2 caracteres',
+    );
+  }
+
+  if (nationalId !== undefined && !/^[0-9]+$/.test(nationalId)) {
+    throw new HttpError(400, 'La cedula solo puede contener numeros');
+  }
+
+  if (newPassword !== undefined && newPassword.length < 8) {
+    throw new HttpError(
+      400,
+      'El campo newPassword debe tener minimo 8 caracteres',
+    );
+  }
+
+  return {
+    username,
+    firstName,
+    lastName,
+    nationalId,
+    birthDate: readOptionalDateString(payload, 'birthDate'),
+    role: readOptionalEnum(payload, 'role', USER_ROLES),
+    status: readOptionalEnum(payload, 'status', RECORD_STATUSES),
+    newPassword,
   };
 }

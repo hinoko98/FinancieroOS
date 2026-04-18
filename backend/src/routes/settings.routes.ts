@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { asyncHandler } from '../lib/async-handler';
 import {
+  parseCreatePlatformBankInput,
   parseUpdatePlatformSettingsInput,
   parseUpdateSettingsInput,
 } from '../lib/validation';
@@ -66,6 +67,26 @@ export function createSettingsRouter(
         parseUpdatePlatformSettingsInput(request.body),
       );
       response.json(settings);
+    }),
+  );
+
+  router.post(
+    '/platform/banks',
+    asyncHandler(async (request, response) => {
+      const user = getAuthenticatedUser(request as AuthenticatedRequest);
+
+      if (user.role !== 'ADMIN') {
+        throw new HttpError(
+          403,
+          'Solo un administrador puede modificar el catalogo de bancos',
+        );
+      }
+
+      const settings = await settingsService.createPlatformBank(
+        user.sub,
+        parseCreatePlatformBankInput(request.body),
+      );
+      response.status(201).json(settings);
     }),
   );
 

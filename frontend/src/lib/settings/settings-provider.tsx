@@ -1,15 +1,8 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 import {
   getThemeColors,
   lightThemeColors,
@@ -17,32 +10,11 @@ import {
   type ThemeBasePreset,
   type ThemePreset,
 } from './theme-presets';
-
-export type DashboardSettings = DashboardColorSet & {
-  id: string;
-  userId: string;
-  themePreset: ThemePreset;
-  customThemeBase: ThemeBasePreset;
-  userIcon: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type PreviewPayload = Partial<DashboardColorSet> & {
-  themePreset?: ThemePreset;
-  customThemeBase?: ThemeBasePreset;
-};
-
-type SettingsContextValue = {
-  settings: DashboardSettings | null;
-  loading: boolean;
-  refreshSettings: () => Promise<void>;
-  applyPreview: (preview: PreviewPayload) => void;
-  resetPreview: () => void;
-  defaults: DashboardColorSet;
-};
-
-const SettingsContext = createContext<SettingsContextValue | null>(null);
+import {
+  SettingsContext,
+  type DashboardSettings,
+  type PreviewPayload,
+} from './settings-context';
 
 function applyDashboardColors(
   colors: DashboardColorSet,
@@ -95,6 +67,10 @@ function resolveThemeMode(
   const preset = settings?.themePreset ?? 'LIGHT';
 
   if (preset === 'DARK') {
+    return 'dark' as const;
+  }
+
+  if (preset === 'GRAPHITE') {
     return 'dark' as const;
   }
 
@@ -175,14 +151,4 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   return (
     <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>
   );
-}
-
-export function useSettings() {
-  const context = useContext(SettingsContext);
-
-  if (!context) {
-    throw new Error('useSettings debe usarse dentro de SettingsProvider');
-  }
-
-  return context;
 }

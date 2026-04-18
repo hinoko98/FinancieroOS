@@ -1,5 +1,6 @@
 import { RecordStatus, type Prisma, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { AppConfig } from '../config/app-config';
 import { HttpError } from '../lib/http-error';
@@ -12,22 +13,37 @@ import type {
 import { PrismaService } from '../lib/prisma';
 import type { AuthUser, RequestMetadata } from '../types/auth';
 import { AuditService } from './audit.service';
+import { EmailService } from './email.service';
 
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly config: AppConfig,
+    private readonly emailService: EmailService,
   ) {}
 
   async register(dto: RegisterInput, metadata?: RequestMetadata) {
     const nationalId = dto.nationalId.trim();
+    const email = dto.email.trim().toLowerCase();
+
     const existingUserByNationalId = await this.prisma.user.findUnique({
       where: { nationalId },
     });
 
     if (existingUserByNationalId) {
       throw new HttpError(400, 'Ya existe un usuario con esa cedula');
+    }
+
+    const existingUserByEmail = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUserByEmail) {
+      throw new HttpError(
+        400,
+        'Ya existe un usuario con ese correo electronico',
+      );
     }
 
     const firstName = this.normalizePersonName(dto.firstName);
@@ -41,6 +57,8 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const usersCount = await this.prisma.user.count();
     const nextRole = usersCount === 0 ? UserRole.ADMIN : UserRole.OPERATOR;
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await this.prisma.user.create({
       data: {
@@ -48,11 +66,23 @@ export class AuthService {
         lastName,
         fullName,
         username,
+        email,
         nationalId,
         birthDate: new Date(dto.birthDate),
         passwordHash,
         role: nextRole,
+        status: RecordStatus.ACTIVE,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
       },
+    });
+
+    const verificationUrl = `${this.config.publicApiUrl}/auth/verify-email?token=${verificationToken}`;
+    const deliveryResult = await this.emailService.sendVerificationEmail({
+      to: email,
+      fullName,
+      username,
+      verificationUrl,
     });
 
     await this.auditService.log({
@@ -63,26 +93,35 @@ export class AuthService {
       performedById: user.id,
       after: {
         username: user.username,
+        email: user.email,
         role: user.role,
         nationalIdMasked: this.maskNationalId(user.nationalId),
         birthDate: user.birthDate,
+        verificationExpiresAt,
       },
       metadata: {
         ipAddress: metadata?.ipAddress ?? null,
         userAgent: metadata?.userAgent ?? null,
+        delivery: deliveryResult.delivery,
       },
     });
 
-    return this.buildAuthResponse(user);
+    return {
+      verificationRequired: true,
+      email,
+      delivery: deliveryResult.delivery,
+    };
   }
 
   async login(dto: LoginInput, metadata?: RequestMetadata) {
-    const normalizedUsername = dto.username.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const identifier = dto.identifier.trim().toLowerCase();
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username: identifier }, { email: identifier }],
+      },
     });
 
-    if (!user || user.status !== RecordStatus.ACTIVE) {
+    if (!user) {
       throw new HttpError(401, 'Credenciales invalidas');
     }
 
@@ -93,6 +132,17 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new HttpError(401, 'Credenciales invalidas');
+    }
+
+    if (user.status !== RecordStatus.ACTIVE) {
+      if (user.email && !user.emailVerifiedAt) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { status: RecordStatus.ACTIVE },
+        });
+      } else {
+        throw new HttpError(401, 'Tu cuenta no se encuentra activa');
+      }
     }
 
     const loginDate = new Date();
@@ -127,6 +177,124 @@ export class AuthService {
     });
 
     return this.buildAuthResponse(user);
+  }
+
+  async verifyEmail(token: string) {
+    const verificationToken = token.trim();
+
+    if (!verificationToken) {
+      throw new HttpError(400, 'Token de verificacion invalido');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { emailVerificationToken: verificationToken },
+    });
+
+    if (!user) {
+      throw new HttpError(400, 'El token de verificacion no es valido');
+    }
+
+    if (
+      !user.emailVerificationExpiresAt ||
+      user.emailVerificationExpiresAt.getTime() < Date.now()
+    ) {
+      throw new HttpError(
+        400,
+        'El enlace de validacion expiro. Solicita uno nuevo desde tu perfil',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+
+    await this.auditService.log({
+      entityName: 'User',
+      entityId: user.id,
+      action: 'ACTIVATE',
+      summary: `Verificacion de correo para ${user.username}`,
+      performedById: user.id,
+    });
+  }
+
+  async resendEmailVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        emailVerifiedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new HttpError(401, 'Usuario no encontrado');
+    }
+
+    if (!user.email) {
+      throw new HttpError(
+        400,
+        'Tu cuenta no tiene correo electronico asociado',
+      );
+    }
+
+    if (user.emailVerifiedAt) {
+      return {
+        email: user.email,
+        delivery: 'EMAIL' as const,
+        alreadyVerified: true,
+        verificationExpiresAt: null,
+      };
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
+        status: RecordStatus.ACTIVE,
+      },
+    });
+
+    const verificationUrl = `${this.config.publicApiUrl}/auth/verify-email?token=${verificationToken}`;
+    const deliveryResult = await this.emailService.sendVerificationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      username: user.username,
+      verificationUrl,
+    });
+
+    await this.auditService.log({
+      entityName: 'User',
+      entityId: user.id,
+      action: 'UPDATE',
+      summary: `Reenvio de validacion de correo para ${user.username}`,
+      performedById: user.id,
+      after: {
+        email: user.email,
+        verificationExpiresAt,
+      },
+      metadata: {
+        delivery: deliveryResult.delivery,
+      },
+    });
+
+    return {
+      email: user.email,
+      delivery: deliveryResult.delivery,
+      alreadyVerified: false,
+      verificationExpiresAt,
+    };
   }
 
   async changePassword(userId: string, dto: ChangePasswordInput) {
@@ -198,6 +366,8 @@ export class AuthService {
         status: true,
         lastLoginAt: true,
         createdAt: true,
+        emailVerifiedAt: true,
+        emailVerificationExpiresAt: true,
       },
     });
 
@@ -233,6 +403,8 @@ export class AuthService {
         status: true,
         lastLoginAt: true,
         createdAt: true,
+        emailVerifiedAt: true,
+        emailVerificationExpiresAt: true,
       },
     });
 
@@ -301,7 +473,6 @@ export class AuthService {
 
     return candidate.slice(0, 30);
   }
-
   private maskNationalId(value: string) {
     if (value.length <= 4) {
       return value;

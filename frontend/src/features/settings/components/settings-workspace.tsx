@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { Globe2, Mail, Settings2 } from 'lucide-react';
+import { Globe2, Landmark, Mail, PlusCircle, Settings2 } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 type PlatformSettings = {
   id: string;
@@ -16,6 +16,7 @@ type PlatformSettings = {
   timezone: string;
   currencyCode: string;
   supportEmail: string | null;
+  bankCatalog: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -44,6 +45,9 @@ export function SettingsWorkspace() {
   const { user } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [bankError, setBankError] = useState<string | null>(null);
+  const [bankMessage, setBankMessage] = useState<string | null>(null);
+  const [newBankName, setNewBankName] = useState('');
   const [form, setForm] = useState({
     platformName: '',
     platformLabel: '',
@@ -93,6 +97,25 @@ export function SettingsWorkspace() {
     onError: (nextError) => {
       setError(extractErrorMessage(nextError));
       setMessage(null);
+    },
+  });
+
+  const createBankMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<PlatformSettings>('/settings/platform/banks', {
+        name: newBankName,
+      });
+      return response.data;
+    },
+    onSuccess: async () => {
+      await platformSettingsQuery.refetch();
+      setNewBankName('');
+      setBankError(null);
+      setBankMessage('Banco o billetera agregada al catalogo global.');
+    },
+    onError: (nextError) => {
+      setBankError(extractErrorMessage(nextError));
+      setBankMessage(null);
     },
   });
 
@@ -310,18 +333,76 @@ export function SettingsWorkspace() {
         </SectionCard>
 
         <SectionCard
-          title="Alcance"
-          subtitle="Que entra realmente en este panel."
+          title="Catalogo de bancos"
+          subtitle="Disponible para ingresos y cuentas financieras del sistema."
         >
-          <div className="space-y-3 text-sm text-[var(--color-muted)]">
-            <p>
-              Aqui van solo ajustes globales de la plataforma: nombre, lema,
-              zona horaria y datos de soporte.
-            </p>
-            <p>
-              La apariencia visual se maneja en <strong>Configuracion</strong>,
-              mientras que el perfil y la contrasena quedaron en <strong>Mi perfil</strong>.
-            </p>
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4">
+              <div className="flex items-center gap-3">
+                <div className="rounded-[var(--radius-control)] bg-[var(--color-brand-soft)] p-3 text-[var(--color-brand-deep)]">
+                  <Landmark className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="font-semibold">Bancos y billeteras</p>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    Catalogo usado en el formulario de ingresos.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-full border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-2 text-sm font-semibold text-[var(--color-brand-deep)]">
+                {platformSettingsQuery.data?.bankCatalog.length ?? 0} opciones
+              </div>
+            </div>
+
+            {isAdmin ? (
+              <form
+                className="flex flex-col gap-3 sm:flex-row"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setBankError(null);
+                  setBankMessage(null);
+                  createBankMutation.mutate();
+                }}
+              >
+                <input
+                  value={newBankName}
+                  onChange={(event) => setNewBankName(event.target.value)}
+                  className="flex-1 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+                  placeholder="Ej. Global66, Bold, Otro banco o billetera"
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={createBankMutation.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  {createBankMutation.isPending ? 'Agregando...' : 'Agregar banco'}
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm text-[var(--color-muted)]">
+                Solo un administrador puede ampliar este catalogo.
+              </p>
+            )}
+
+            {bankError ? (
+              <p className="text-sm text-[var(--color-danger)]">{bankError}</p>
+            ) : null}
+            {bankMessage ? (
+              <p className="text-sm text-[var(--color-success)]">{bankMessage}</p>
+            ) : null}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(platformSettingsQuery.data?.bankCatalog ?? []).map((bank) => (
+                <div
+                  key={bank}
+                  className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)]"
+                >
+                  {bank}
+                </div>
+              ))}
+            </div>
           </div>
         </SectionCard>
 
@@ -341,6 +422,10 @@ export function SettingsWorkspace() {
               <p className="mt-2 text-lg font-bold">
                 {platformSettingsQuery.data?.platformName}
               </p>
+            </div>
+            <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-4 text-sm text-[var(--color-muted)]">
+              La apariencia visual se maneja en <strong>Configuracion</strong>,
+              mientras que el perfil y la contrasena quedaron en <strong>Mi perfil</strong>.
             </div>
           </div>
         </SectionCard>

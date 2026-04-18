@@ -3,10 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { KeyRound, LogIn } from 'lucide-react';
+import { KeyRound, LogIn, Mail, RefreshCw } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
 import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-provider';
+import { useAuth } from '@/lib/auth/auth-context';
 
 type ProfileResponse = {
   id: string;
@@ -21,6 +21,8 @@ type ProfileResponse = {
   status: string;
   lastLoginAt: string | null;
   createdAt: string;
+  emailVerifiedAt: string | null;
+  emailVerificationExpiresAt: string | null;
 };
 
 type LoginHistoryEntry = {
@@ -88,6 +90,13 @@ export function ProfileWorkspace() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(
+    null,
+  );
+  const [verificationError, setVerificationError] = useState<string | null>(
+    null,
+  );
+  const [profileSnapshotTime] = useState(() => Date.now());
 
   const profileQuery = useQuery({
     queryKey: ['auth-me'],
@@ -129,6 +138,7 @@ export function ProfileWorkspace() {
     },
     onSuccess: (nextProfile) => {
       updateUser({
+        id: nextProfile.id,
         sub: nextProfile.id,
         username: nextProfile.username,
         role: nextProfile.role,
@@ -163,6 +173,41 @@ export function ProfileWorkspace() {
       setPasswordMessage(null);
     },
   });
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiClient.post<{
+        email: string;
+        delivery: 'EMAIL' | 'LOG';
+        alreadyVerified: boolean;
+        verificationExpiresAt: string | null;
+      }>('/auth/resend-verification');
+      return response.data;
+    },
+    onSuccess: (result) => {
+      profileQuery.refetch();
+      if (result.alreadyVerified) {
+        setVerificationMessage('Tu correo ya se encuentra validado.');
+      } else {
+        setVerificationMessage(
+          result.delivery === 'EMAIL'
+            ? `Se envio un nuevo enlace de validacion a ${result.email}.`
+            : `No hay SMTP configurado, asi que el nuevo enlace de validacion quedo registrado en el servidor.`,
+        );
+      }
+      setVerificationError(null);
+    },
+    onError: (error) => {
+      setVerificationError(extractErrorMessage(error));
+      setVerificationMessage(null);
+    },
+  });
+
+  const verificationExpiresAt = profileQuery.data?.emailVerificationExpiresAt ?? null;
+  const emailValidationExpired =
+    Boolean(verificationExpiresAt) &&
+    !profileQuery.data?.emailVerifiedAt &&
+    new Date(verificationExpiresAt ?? '').getTime() < profileSnapshotTime;
 
   return (
     <div className="space-y-6">
@@ -258,6 +303,15 @@ export function ProfileWorkspace() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm">
+              <span className="font-semibold">Correo electronico</span>
+              <input
+                value={profileQuery.data?.email ?? ''}
+                readOnly
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
+              />
+            </label>
+
+            <label className="space-y-2 text-sm">
               <span className="font-semibold">Fecha de registro</span>
               <input
                 value={formatDate(profileQuery.data?.createdAt ?? null)}
@@ -274,6 +328,55 @@ export function ProfileWorkspace() {
                 className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-[var(--color-muted)] outline-none"
               />
             </label>
+          </div>
+
+          <div className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold">
+                  <Mail className="h-4 w-4 text-[var(--color-brand)]" />
+                  Validacion de correo
+                </p>
+                <p className="text-sm text-[var(--color-muted)]">
+                  {profileQuery.data?.emailVerifiedAt
+                    ? `Correo validado el ${formatDate(profileQuery.data.emailVerifiedAt)}.`
+                    : emailValidationExpired
+                      ? 'El ultimo enlace de validacion ya vencio. Puedes solicitar uno nuevo.'
+                      : profileQuery.data?.emailVerificationExpiresAt
+                        ? `Pendiente de validar. El enlace actual vence el ${formatDate(profileQuery.data.emailVerificationExpiresAt)}.`
+                        : 'Aun no hay un enlace de validacion generado para este correo.'}
+                </p>
+              </div>
+
+              {!profileQuery.data?.emailVerifiedAt ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setVerificationError(null);
+                    setVerificationMessage(null);
+                    resendVerificationMutation.mutate();
+                  }}
+                  disabled={resendVerificationMutation.isPending || !profileQuery.data?.email}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-5 py-3 text-sm font-semibold text-[var(--color-brand-deep)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  {resendVerificationMutation.isPending
+                    ? 'Enviando...'
+                    : 'Reenviar validacion'}
+                </button>
+              ) : null}
+            </div>
+
+            {verificationError ? (
+              <p className="mt-3 text-sm text-[var(--color-danger)]">
+                {verificationError}
+              </p>
+            ) : null}
+            {verificationMessage ? (
+              <p className="mt-3 text-sm text-[var(--color-success)]">
+                {verificationMessage}
+              </p>
+            ) : null}
           </div>
 
           {profileError ? (

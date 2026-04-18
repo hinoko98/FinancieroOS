@@ -13,7 +13,7 @@ export type DashboardColorSet = {
   dashboardWarningColor: string;
 };
 
-export type ThemePreset = 'LIGHT' | 'DARK' | 'CUSTOM';
+export type ThemePreset = 'LIGHT' | 'DARK' | 'GRAPHITE' | 'CUSTOM';
 export type ThemeBasePreset = 'LIGHT' | 'DARK';
 
 export const lightThemeColors: DashboardColorSet = {
@@ -46,6 +46,21 @@ export const darkThemeColors: DashboardColorSet = {
   dashboardWarningColor: '#d9a441',
 };
 
+export const graphiteThemeColors: DashboardColorSet = {
+  dashboardSurfaceColor: '#212121',
+  dashboardPanelColor: '#171717',
+  dashboardPanelStrongColor: '#2a2a2a',
+  dashboardInkColor: '#ececec',
+  dashboardMutedColor: '#a3a3a3',
+  dashboardLineColor: '#3a3a3a',
+  dashboardBrandColor: '#8f8f8f',
+  dashboardBrandSoftColor: '#303030',
+  dashboardBrandDeepColor: '#f5f5f5',
+  dashboardSuccessColor: '#10a37f',
+  dashboardDangerColor: '#ef4444',
+  dashboardWarningColor: '#f59e0b',
+};
+
 export const themePresetOptions: {
   id: ThemePreset;
   label: string;
@@ -62,6 +77,11 @@ export const themePresetOptions: {
     description: 'Contraste alto para jornadas largas.',
   },
   {
+    id: 'GRAPHITE',
+    label: 'Grafito',
+    description: 'Carbon profundo tipo ChatGPT, sin superficies blancas y con contraste suave.',
+  },
+  {
     id: 'CUSTOM',
     label: 'Personalizado',
     description: 'Edita manualmente toda la paleta.',
@@ -76,6 +96,8 @@ export function getThemeColors(
   const baseColors =
     preset === 'DARK'
       ? darkThemeColors
+      : preset === 'GRAPHITE'
+        ? graphiteThemeColors
       : preset === 'CUSTOM'
         ? customThemeBase === 'DARK'
           ? darkThemeColors

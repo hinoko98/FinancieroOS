@@ -20,8 +20,59 @@ export function createOpenApiDocument() {
     paths: {
       '/': { get: { summary: 'Informacion general del sistema' } },
       '/health': { get: { summary: 'Healthcheck del servicio' } },
+      '/admin/users': {
+        get: {
+          summary: 'Listar usuarios para administracion',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/finance-structure': {
+        get: {
+          summary: 'Consultar periodos y catalogo financiero administrativo',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/financial-periods': {
+        post: {
+          summary: 'Crear un periodo financiero mensual',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/financial-categories': {
+        post: {
+          summary: 'Crear una categoria financiera',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/financial-subcategories': {
+        post: {
+          summary: 'Crear una subcategoria financiera',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/overview': {
+        get: {
+          summary: 'Resumen administrativo del sistema',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/admin/users/{userId}': {
+        patch: {
+          summary: 'Actualizar un usuario desde administracion',
+          security: [{ bearerAuth: [] }],
+        },
+      },
       '/auth/register': { post: { summary: 'Registro de usuario' } },
       '/auth/login': { post: { summary: 'Inicio de sesion' } },
+      '/auth/verify-email': {
+        get: { summary: 'Verificar correo electronico' },
+      },
+      '/auth/resend-verification': {
+        post: {
+          summary: 'Reenviar validacion de correo electronico',
+          security: [{ bearerAuth: [] }],
+        },
+      },
       '/auth/me': {
         get: {
           summary: 'Perfil autenticado',
@@ -59,6 +110,12 @@ export function createOpenApiDocument() {
           security: [{ bearerAuth: [] }],
         },
       },
+      '/finance/catalog': {
+        get: {
+          summary: 'Consultar catalogo financiero disponible',
+          security: [{ bearerAuth: [] }],
+        },
+      },
       '/settings': {
         get: {
           summary: 'Obtener ajustes del usuario',
@@ -66,6 +123,22 @@ export function createOpenApiDocument() {
         },
         patch: {
           summary: 'Actualizar ajustes del usuario',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/settings/platform': {
+        get: {
+          summary: 'Consultar configuracion global de plataforma',
+          security: [{ bearerAuth: [] }],
+        },
+        patch: {
+          summary: 'Actualizar configuracion global de plataforma',
+          security: [{ bearerAuth: [] }],
+        },
+      },
+      '/settings/platform/banks': {
+        post: {
+          summary: 'Agregar un banco o billetera al catalogo global',
           security: [{ bearerAuth: [] }],
         },
       },

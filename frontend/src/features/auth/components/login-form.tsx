@@ -1,40 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AxiosError } from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
   CreditCard,
+  Mail,
   Eye,
   EyeOff,
   LockKeyhole,
   UserRound,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth/auth-provider';
-
-function normalizeToken(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z]/g, '')
-    .toLowerCase();
-}
-
-function buildUsernamePreview(
-  firstName: string,
-  lastName: string,
-  nationalId: string,
-) {
-  const firstSegment = normalizeToken(firstName).slice(0, 3);
-  const lastSegment = normalizeToken(lastName).slice(0, 3);
-  const idSegment = nationalId.replace(/\D/g, '').slice(-3);
-
-  if (!firstSegment && !lastSegment && !idSegment) {
-    return 'Se generara automaticamente';
-  }
-
-  return `${firstSegment}${lastSegment}${idSegment}` || 'Se generara automaticamente';
-}
+import { useAuth } from '@/lib/auth/auth-context';
 
 function extractErrorMessage(error: unknown, fallback: string) {
   if (error instanceof AxiosError) {
@@ -58,43 +36,119 @@ function extractErrorMessage(error: unknown, fallback: string) {
 
 export function LoginForm() {
   const { login, register } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] =
+    useState(false);
   const [loginForm, setLoginForm] = useState({
-    username: '',
+    identifier: '',
     password: '',
   });
   const [registerForm, setRegisterForm] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     nationalId: '',
     birthDate: '',
     password: '',
+    confirmPassword: '',
   });
 
-  const usernamePreview = useMemo(
-    () =>
-      buildUsernamePreview(
-        registerForm.firstName,
-        registerForm.lastName,
-        registerForm.nationalId,
-      ),
-    [registerForm.firstName, registerForm.lastName, registerForm.nationalId],
-  );
+  const maximumBirthDate = useMemo(() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 14);
+    return date.toISOString().slice(0, 10);
+  }, []);
+
+  useEffect(() => {
+    const verificationState = searchParams.get('verified');
+    const reason = searchParams.get('reason');
+
+    if (verificationState === '1') {
+      setMode('login');
+      setMessage('Correo validado correctamente.');
+      setError(null);
+      setSearchParams({}, { replace: true });
+      return;
+    }
+
+    if (verificationState === '0') {
+      setMode('login');
+      setError(
+        reason && reason !== 'token'
+          ? decodeURIComponent(reason)
+          : 'No fue posible validar el correo. Inicia sesion y solicita un nuevo enlace desde tu perfil.',
+      );
+      setMessage(null);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const registerValidationError = useMemo(() => {
+    if (
+      registerForm.birthDate &&
+      new Date(registerForm.birthDate).getTime() >
+        new Date(maximumBirthDate).getTime()
+    ) {
+      return 'Debes tener al menos 14 anos para crear la cuenta.';
+    }
+
+    if (
+      registerForm.confirmPassword &&
+      registerForm.password !== registerForm.confirmPassword
+    ) {
+      return 'La confirmacion de contrasena no coincide.';
+    }
+
+    return null;
+  }, [
+    maximumBirthDate,
+    registerForm.birthDate,
+    registerForm.confirmPassword,
+    registerForm.password,
+  ]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setMessage(null);
+
+    if (mode === 'register' && registerValidationError) {
+      setError(registerValidationError);
+      setLoading(false);
+      return;
+    }
 
     try {
       if (mode === 'login') {
         await login(loginForm);
       } else {
-        await register(registerForm);
+        const result = await register(registerForm);
+        setLoginForm({
+          identifier: result.email,
+          password: '',
+        });
+        setRegisterForm({
+          firstName: '',
+          lastName: '',
+          email: '',
+          nationalId: '',
+          birthDate: '',
+          password: '',
+          confirmPassword: '',
+        });
+        setMode('login');
+        setMessage(
+          result.delivery === 'EMAIL'
+            ? `Cuenta creada correctamente. Puedes iniciar sesion de inmediato. Revisa ${result.email} para validar el correo durante las proximas 24 horas.`
+            : `Cuenta creada correctamente. Puedes iniciar sesion de inmediato. No hay SMTP configurado, asi que el enlace de validacion quedo registrado en el servidor.`,
+        );
       }
     } catch (submitError) {
       setError(
@@ -105,6 +159,7 @@ export function LoginForm() {
             : 'No fue posible crear la cuenta. Revisa los datos del formulario.',
         ),
       );
+      setMessage(null);
     } finally {
       setLoading(false);
     }
@@ -118,6 +173,7 @@ export function LoginForm() {
           onClick={() => {
             setMode('login');
             setError(null);
+            setMessage(null);
           }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
             mode === 'login'
@@ -132,6 +188,7 @@ export function LoginForm() {
           onClick={() => {
             setMode('register');
             setError(null);
+            setMessage(null);
           }}
           className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${
             mode === 'register'
@@ -147,19 +204,19 @@ export function LoginForm() {
         {mode === 'login' ? (
           <>
             <label className="block space-y-2 text-sm">
-              <span className="font-semibold">Usuario</span>
+              <span className="font-semibold">Usuario o correo</span>
               <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                 <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
                 <input
-                  value={loginForm.username}
+                  value={loginForm.identifier}
                   onChange={(event) =>
                     setLoginForm((current) => ({
                       ...current,
-                      username: event.target.value,
+                      identifier: event.target.value,
                     }))
                   }
                   className="w-full px-3 py-3 outline-none"
-                  placeholder="admin001"
+                  placeholder="usuario o correo@dominio.com"
                   autoCapitalize="none"
                   autoCorrect="off"
                   required
@@ -242,6 +299,28 @@ export function LoginForm() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block space-y-2 text-sm">
+                <span className="font-semibold">Correo electronico</span>
+                <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
+                  <Mail className="h-4 w-4 text-[var(--color-muted)]" />
+                  <input
+                    type="email"
+                    value={registerForm.email}
+                    onChange={(event) =>
+                      setRegisterForm((current) => ({
+                        ...current,
+                        email: event.target.value.toLowerCase(),
+                      }))
+                    }
+                    className="w-full px-3 py-3 outline-none"
+                    placeholder="correo@dominio.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    required
+                  />
+                </div>
+              </label>
+
+              <label className="block space-y-2 text-sm">
                 <span className="font-semibold">Cedula</span>
                 <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
                   <CreditCard className="h-4 w-4 text-[var(--color-muted)]" />
@@ -274,27 +353,13 @@ export function LoginForm() {
                         birthDate: event.target.value,
                       }))
                     }
+                    max={maximumBirthDate}
                     className="w-full px-3 py-3 outline-none"
                     required
                   />
                 </div>
               </label>
             </div>
-
-            <label className="block space-y-2 text-sm">
-              <span className="font-semibold">Usuario generado automaticamente</span>
-              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-[#f6efe7] px-4">
-                <UserRound className="h-4 w-4 text-[var(--color-muted)]" />
-                <input
-                  value={usernamePreview}
-                  readOnly
-                  className="w-full px-3 py-3 text-[var(--color-muted)] outline-none"
-                />
-              </div>
-              <p className="text-xs text-[var(--color-muted)]">
-                Se forma con las 3 primeras letras del nombre, las 3 del apellido y los 3 ultimos numeros de la cedula.
-              </p>
-            </label>
 
             <label className="block space-y-2 text-sm">
               <span className="font-semibold">Contrasena</span>
@@ -327,10 +392,51 @@ export function LoginForm() {
                 </button>
               </div>
             </label>
+
+            <label className="block space-y-2 text-sm">
+              <span className="font-semibold">Confirmar contrasena</span>
+              <div className="flex items-center rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4">
+                <LockKeyhole className="h-4 w-4 text-[var(--color-muted)]" />
+                <input
+                  type={showRegisterConfirmPassword ? 'text' : 'password'}
+                  value={registerForm.confirmPassword}
+                  onChange={(event) =>
+                    setRegisterForm((current) => ({
+                      ...current,
+                      confirmPassword: event.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-3 outline-none"
+                  placeholder="Repite la contrasena"
+                  minLength={8}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowRegisterConfirmPassword((current) => !current)
+                  }
+                  className="text-[var(--color-muted)] transition hover:text-[var(--color-brand)]"
+                >
+                  {showRegisterConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </label>
+
+            <p className="text-xs leading-6 text-[var(--color-muted)]">
+              El usuario se sigue generando automaticamente. La validacion del
+              correo es opcional para confirmar que el email existe y el enlace
+              dura 24 horas; si vence, puedes reenviarlo desde tu perfil.
+            </p>
           </>
         )}
 
         {error ? <p className="text-sm text-[var(--color-danger)]">{error}</p> : null}
+        {message ? <p className="text-sm text-[var(--color-success)]">{message}</p> : null}
 
         <button
           type="submit"

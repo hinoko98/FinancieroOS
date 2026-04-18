@@ -7,21 +7,27 @@ import swaggerUi from 'swagger-ui-express';
 import type { AppConfig } from './config/app-config';
 import { createOpenApiDocument } from './lib/openapi';
 import { errorMiddleware } from './middlewares/error.middleware';
+import { createAdminRouter } from './routes/admin.routes';
 import { createAuditRouter } from './routes/audit.routes';
 import { createAuthRouter } from './routes/auth.routes';
 import { createEntitiesRouter } from './routes/entities.routes';
+import { createFinanceRouter } from './routes/finance.routes';
 import { createHealthRouter } from './routes/health.routes';
 import { createSettingsRouter } from './routes/settings.routes';
 import { createSystemRouter } from './routes/system.routes';
 import type { AuditService } from './services/audit.service';
+import type { AdminService } from './services/admin.service';
 import type { AuthService } from './services/auth.service';
 import type { EntitiesService } from './services/entities.service';
+import type { FinanceService } from './services/finance.service';
 import type { SettingsService } from './services/settings.service';
 
 type AppServices = {
+  adminService: AdminService;
   authService: AuthService;
   auditService: AuditService;
   entitiesService: EntitiesService;
+  financeService: FinanceService;
   settingsService: SettingsService;
 };
 
@@ -50,12 +56,20 @@ export function createApp(config: AppConfig, services: AppServices) {
   app.use('/api/v1', createSystemRouter());
   app.use('/api/v1/health', createHealthRouter());
   app.use(
+    '/api/v1/admin',
+    createAdminRouter(services.adminService, config.jwtSecret),
+  );
+  app.use(
     '/api/v1/auth',
     createAuthRouter(services.authService, config.jwtSecret),
   );
   app.use(
     '/api/v1/entities',
     createEntitiesRouter(services.entitiesService, config.jwtSecret),
+  );
+  app.use(
+    '/api/v1/finance',
+    createFinanceRouter(services.financeService, config.jwtSecret),
   );
   app.use(
     '/api/v1/settings',

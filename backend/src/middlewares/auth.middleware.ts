@@ -29,6 +29,36 @@ export function requireAuth(jwtSecret: string): RequestHandler {
   };
 }
 
+export function requireAdmin(jwtSecret: string): RequestHandler {
+  return (request, _response, next) => {
+    const authorizationHeader = request.headers.authorization;
+    const bearerToken = authorizationHeader?.startsWith('Bearer ')
+      ? authorizationHeader.slice('Bearer '.length).trim()
+      : null;
+
+    if (!bearerToken) {
+      next(new HttpError(401, 'Token de acceso requerido'));
+      return;
+    }
+
+    try {
+      const payload = jwt.verify(bearerToken, jwtSecret) as AuthUser;
+
+      if (payload.role !== 'ADMIN') {
+        next(
+          new HttpError(403, 'No tienes permisos para acceder a este recurso'),
+        );
+        return;
+      }
+
+      (request as AuthenticatedRequest).authUser = payload;
+      next();
+    } catch {
+      next(new HttpError(401, 'Token invalido o expirado'));
+    }
+  };
+}
+
 export function getAuthenticatedUser(request: AuthenticatedRequest) {
   const user = request.authUser;
 

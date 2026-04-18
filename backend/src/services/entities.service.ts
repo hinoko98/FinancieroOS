@@ -74,6 +74,14 @@ export class EntitiesService {
                   fullName: true,
                 },
               },
+              sourceAccount: {
+                select: {
+                  id: true,
+                  bankName: true,
+                  accountLabel: true,
+                  accountType: true,
+                },
+              },
             },
             orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
           },
@@ -95,6 +103,9 @@ export class EntitiesService {
                       fullName: true,
                     },
                   },
+                  period: true,
+                  financialCategory: true,
+                  financialSubcategory: true,
                 },
                 orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
               },
@@ -147,6 +158,28 @@ export class EntitiesService {
             notes: record.notes,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
+            period: record.period
+              ? {
+                  id: record.period.id,
+                  year: record.period.year,
+                  month: record.period.month,
+                  label: record.period.label,
+                  status: record.period.status,
+                }
+              : null,
+            financialCategory: record.financialCategory
+              ? {
+                  id: record.financialCategory.id,
+                  direction: record.financialCategory.direction,
+                  name: record.financialCategory.name,
+                }
+              : null,
+            financialSubcategory: record.financialSubcategory
+              ? {
+                  id: record.financialSubcategory.id,
+                  name: record.financialSubcategory.name,
+                }
+              : null,
             performedBy: record.performedBy,
           })),
         };
@@ -210,6 +243,14 @@ export class EntitiesService {
           id: allocation.id,
           amount: Number(allocation.amount),
           sourceLabel: allocation.sourceLabel,
+          sourceAccount: allocation.sourceAccount
+            ? {
+                id: allocation.sourceAccount.id,
+                bankName: allocation.sourceAccount.bankName,
+                accountLabel: allocation.sourceAccount.accountLabel,
+                accountType: allocation.sourceAccount.accountType,
+              }
+            : null,
           occurredAt: allocation.occurredAt,
           createdAt: allocation.createdAt,
           updatedAt: allocation.updatedAt,
@@ -333,23 +374,96 @@ export class EntitiesService {
       throw new HttpError(404, 'Entidad no encontrada');
     }
 
-    const allocation = await this.prisma.trackingEntityAllocation.create({
-      data: {
-        entityId: entity.id,
-        amount: dto.amount,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
-        sourceLabel: this.optionalText(dto.sourceLabel),
-        performedById: userId,
-      },
-      include: {
-        performedBy: {
+    const allocation = await this.prisma.$transaction(async (tx) => {
+      const sourceAccountId = this.optionalText(dto.sourceAccountId);
+
+      let sourceAccount: {
+        id: string;
+        bankName: string;
+        accountLabel: string;
+        accountType: string;
+      } | null = null;
+
+      if (sourceAccountId) {
+        sourceAccount = await tx.financialAccount.findFirst({
+          where: {
+            id: sourceAccountId,
+            userId,
+          },
           select: {
             id: true,
-            username: true,
-            fullName: true,
+            bankName: true,
+            accountLabel: true,
+            accountType: true,
+          },
+        });
+
+        if (!sourceAccount) {
+          throw new HttpError(
+            404,
+            'La cuenta origen no existe o no te pertenece',
+          );
+        }
+
+        const availableBalance = await this.getFinancialAccountBalance(
+          tx,
+          sourceAccount.id,
+        );
+
+        if (availableBalance < dto.amount) {
+          throw new HttpError(
+            400,
+            'La cuenta origen no tiene saldo suficiente',
+          );
+        }
+      }
+
+      const createdAllocation = await tx.trackingEntityAllocation.create({
+        data: {
+          entityId: entity.id,
+          amount: dto.amount,
+          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+          sourceLabel: this.optionalText(dto.sourceLabel),
+          sourceAccountId: sourceAccount?.id ?? null,
+          performedById: userId,
+        },
+        include: {
+          performedBy: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+            },
+          },
+          sourceAccount: {
+            select: {
+              id: true,
+              bankName: true,
+              accountLabel: true,
+              accountType: true,
+            },
           },
         },
-      },
+      });
+
+      if (sourceAccount) {
+        await tx.financialAccountMovement.create({
+          data: {
+            accountId: sourceAccount.id,
+            movementType: 'ALLOCATION_DEBIT',
+            category: 'Asignacion a entidad',
+            amount: dto.amount,
+            sourceLabel:
+              this.optionalText(dto.sourceLabel) ??
+              `Asignacion para ${entity.name}`,
+            occurredAt: createdAllocation.occurredAt,
+            performedById: userId,
+            entityAllocationId: createdAllocation.id,
+          },
+        });
+      }
+
+      return createdAllocation;
     });
 
     await this.auditService.log({
@@ -363,6 +477,7 @@ export class EntitiesService {
         amount: Number(allocation.amount),
         occurredAt: allocation.occurredAt,
         sourceLabel: allocation.sourceLabel,
+        sourceAccountId: allocation.sourceAccount?.id ?? null,
       },
     });
 
@@ -370,6 +485,14 @@ export class EntitiesService {
       id: allocation.id,
       amount: Number(allocation.amount),
       sourceLabel: allocation.sourceLabel,
+      sourceAccount: allocation.sourceAccount
+        ? {
+            id: allocation.sourceAccount.id,
+            bankName: allocation.sourceAccount.bankName,
+            accountLabel: allocation.sourceAccount.accountLabel,
+            accountType: allocation.sourceAccount.accountType,
+          }
+        : null,
       occurredAt: allocation.occurredAt,
       createdAt: allocation.createdAt,
       updatedAt: allocation.updatedAt,
@@ -396,11 +519,20 @@ export class EntitiesService {
     const access = await this.getEntityAccess(item.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
+    const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+    const [classification, period] = await Promise.all([
+      this.resolveExpenseClassification(dto.categoryId, dto.subcategoryId),
+      this.ensurePeriodForDate(occurredAt),
+    ]);
+
     const record = await this.prisma.trackingEntityRecord.create({
       data: {
         itemId: item.id,
+        periodId: period.id,
+        financialCategoryId: classification.category?.id ?? null,
+        financialSubcategoryId: classification.subcategory?.id ?? null,
         amount: dto.amount,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+        occurredAt,
         notes: this.optionalText(dto.notes),
         performedById: userId,
       },
@@ -412,6 +544,9 @@ export class EntitiesService {
             fullName: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
       },
     });
 
@@ -425,6 +560,9 @@ export class EntitiesService {
         itemId: item.id,
         amount: Number(record.amount),
         occurredAt: record.occurredAt,
+        periodId: record.periodId,
+        financialCategoryId: record.financialCategoryId,
+        financialSubcategoryId: record.financialSubcategoryId,
       },
     });
 
@@ -435,6 +573,28 @@ export class EntitiesService {
       notes: record.notes,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      period: record.period
+        ? {
+            id: record.period.id,
+            year: record.period.year,
+            month: record.period.month,
+            label: record.period.label,
+            status: record.period.status,
+          }
+        : null,
+      financialCategory: record.financialCategory
+        ? {
+            id: record.financialCategory.id,
+            direction: record.financialCategory.direction,
+            name: record.financialCategory.name,
+          }
+        : null,
+      financialSubcategory: record.financialSubcategory
+        ? {
+            id: record.financialSubcategory.id,
+            name: record.financialSubcategory.name,
+          }
+        : null,
       performedBy: record.performedBy,
     };
   }
@@ -448,6 +608,15 @@ export class EntitiesService {
       where: { id: allocationId },
       include: {
         entity: true,
+        sourceAccount: {
+          select: {
+            id: true,
+            bankName: true,
+            accountLabel: true,
+            accountType: true,
+          },
+        },
+        sourceAccountMovement: true,
         performedBy: {
           select: {
             id: true,
@@ -465,16 +634,38 @@ export class EntitiesService {
     const access = await this.getEntityAccess(allocation.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
-    const updatedAllocation = await this.prisma.trackingEntityAllocation.update(
-      {
+    const updatedAllocation = await this.prisma.$transaction(async (tx) => {
+      const nextAmount = dto.amount ?? Number(allocation.amount);
+      const nextOccurredAt = dto.occurredAt
+        ? new Date(dto.occurredAt)
+        : allocation.occurredAt;
+      const nextSourceLabel =
+        dto.sourceLabel !== undefined
+          ? this.optionalText(dto.sourceLabel)
+          : allocation.sourceLabel;
+
+      if (allocation.sourceAccountId) {
+        const availableBalance = await this.getFinancialAccountBalance(
+          tx,
+          allocation.sourceAccountId,
+          allocation.id,
+        );
+
+        if (availableBalance < nextAmount) {
+          throw new HttpError(
+            400,
+            'La cuenta origen no tiene saldo suficiente',
+          );
+        }
+      }
+
+      const nextAllocation = await tx.trackingEntityAllocation.update({
         where: { id: allocation.id },
         data: {
           amount: dto.amount ?? undefined,
-          occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+          occurredAt: dto.occurredAt ? nextOccurredAt : undefined,
           sourceLabel:
-            dto.sourceLabel !== undefined
-              ? this.optionalText(dto.sourceLabel)
-              : undefined,
+            dto.sourceLabel !== undefined ? nextSourceLabel : undefined,
         },
         include: {
           performedBy: {
@@ -484,9 +675,33 @@ export class EntitiesService {
               fullName: true,
             },
           },
+          sourceAccount: {
+            select: {
+              id: true,
+              bankName: true,
+              accountLabel: true,
+              accountType: true,
+            },
+          },
         },
-      },
-    );
+      });
+
+      if (allocation.sourceAccountMovement) {
+        await tx.financialAccountMovement.update({
+          where: {
+            id: allocation.sourceAccountMovement.id,
+          },
+          data: {
+            amount: nextAmount,
+            occurredAt: nextOccurredAt,
+            sourceLabel:
+              nextSourceLabel ?? `Asignacion para ${allocation.entity.name}`,
+          },
+        });
+      }
+
+      return nextAllocation;
+    });
 
     await this.auditService.log({
       entityName: 'TrackingEntityAllocation',
@@ -498,11 +713,13 @@ export class EntitiesService {
         amount: Number(allocation.amount),
         occurredAt: allocation.occurredAt,
         sourceLabel: allocation.sourceLabel,
+        sourceAccountId: allocation.sourceAccount?.id ?? null,
       },
       after: {
         amount: Number(updatedAllocation.amount),
         occurredAt: updatedAllocation.occurredAt,
         sourceLabel: updatedAllocation.sourceLabel,
+        sourceAccountId: updatedAllocation.sourceAccount?.id ?? null,
       },
     });
 
@@ -510,6 +727,14 @@ export class EntitiesService {
       id: updatedAllocation.id,
       amount: Number(updatedAllocation.amount),
       sourceLabel: updatedAllocation.sourceLabel,
+      sourceAccount: updatedAllocation.sourceAccount
+        ? {
+            id: updatedAllocation.sourceAccount.id,
+            bankName: updatedAllocation.sourceAccount.bankName,
+            accountLabel: updatedAllocation.sourceAccount.accountLabel,
+            accountType: updatedAllocation.sourceAccount.accountType,
+          }
+        : null,
       occurredAt: updatedAllocation.occurredAt,
       createdAt: updatedAllocation.createdAt,
       updatedAt: updatedAllocation.updatedAt,
@@ -530,6 +755,9 @@ export class EntitiesService {
             entity: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
         performedBy: {
           select: {
             id: true,
@@ -547,11 +775,27 @@ export class EntitiesService {
     const access = await this.getEntityAccess(record.item.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
+    const nextOccurredAt = dto.occurredAt
+      ? new Date(dto.occurredAt)
+      : record.occurredAt;
+    const [classification, period] = await Promise.all([
+      this.resolveExpenseClassification(
+        dto.categoryId ?? record.financialCategoryId ?? undefined,
+        dto.categoryId === undefined && dto.subcategoryId === undefined
+          ? (record.financialSubcategoryId ?? undefined)
+          : dto.subcategoryId,
+      ),
+      this.ensurePeriodForDate(nextOccurredAt),
+    ]);
+
     const updatedRecord = await this.prisma.trackingEntityRecord.update({
       where: { id: record.id },
       data: {
         amount: dto.amount ?? undefined,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+        occurredAt: dto.occurredAt ? nextOccurredAt : undefined,
+        periodId: period.id,
+        financialCategoryId: classification.category?.id ?? null,
+        financialSubcategoryId: classification.subcategory?.id ?? null,
       },
       include: {
         performedBy: {
@@ -561,6 +805,9 @@ export class EntitiesService {
             fullName: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
       },
     });
 
@@ -573,10 +820,16 @@ export class EntitiesService {
       before: {
         amount: Number(record.amount),
         occurredAt: record.occurredAt,
+        periodId: record.periodId,
+        financialCategoryId: record.financialCategoryId,
+        financialSubcategoryId: record.financialSubcategoryId,
       },
       after: {
         amount: Number(updatedRecord.amount),
         occurredAt: updatedRecord.occurredAt,
+        periodId: updatedRecord.periodId,
+        financialCategoryId: updatedRecord.financialCategoryId,
+        financialSubcategoryId: updatedRecord.financialSubcategoryId,
       },
     });
 
@@ -587,6 +840,28 @@ export class EntitiesService {
       notes: updatedRecord.notes,
       createdAt: updatedRecord.createdAt,
       updatedAt: updatedRecord.updatedAt,
+      period: updatedRecord.period
+        ? {
+            id: updatedRecord.period.id,
+            year: updatedRecord.period.year,
+            month: updatedRecord.period.month,
+            label: updatedRecord.period.label,
+            status: updatedRecord.period.status,
+          }
+        : null,
+      financialCategory: updatedRecord.financialCategory
+        ? {
+            id: updatedRecord.financialCategory.id,
+            direction: updatedRecord.financialCategory.direction,
+            name: updatedRecord.financialCategory.name,
+          }
+        : null,
+      financialSubcategory: updatedRecord.financialSubcategory
+        ? {
+            id: updatedRecord.financialSubcategory.id,
+            name: updatedRecord.financialSubcategory.name,
+          }
+        : null,
       performedBy: updatedRecord.performedBy,
     };
   }
@@ -955,5 +1230,120 @@ export class EntitiesService {
 
   private normalizeUsername(value: string) {
     return value.trim().replace(/^@+/, '').toLowerCase();
+  }
+
+  private async resolveExpenseClassification(
+    categoryId?: string,
+    subcategoryId?: string,
+  ) {
+    if (!categoryId) {
+      return {
+        category: null,
+        subcategory: null,
+      };
+    }
+
+    const category = await this.prisma.financialCategory.findUnique({
+      where: {
+        id: categoryId,
+      },
+      include: {
+        subcategories: true,
+      },
+    });
+
+    if (!category || category.direction !== 'EXPENSE') {
+      throw new HttpError(404, 'Categoria financiera de egreso no encontrada');
+    }
+
+    if (!subcategoryId) {
+      return {
+        category,
+        subcategory: null,
+      };
+    }
+
+    const subcategory = category.subcategories.find(
+      (item) => item.id === subcategoryId,
+    );
+
+    if (!subcategory) {
+      throw new HttpError(
+        400,
+        'La subcategoria no pertenece a la categoria seleccionada',
+      );
+    }
+
+    return {
+      category,
+      subcategory,
+    };
+  }
+
+  private async ensurePeriodForDate(date: Date) {
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const startsAt = new Date(Date.UTC(year, month - 1, 1));
+    const endsAt = new Date(Date.UTC(year, month, 0));
+
+    return this.prisma.financialPeriod.upsert({
+      where: {
+        year_month: {
+          year,
+          month,
+        },
+      },
+      update: {},
+      create: {
+        year,
+        month,
+        label: this.buildPeriodLabel(year, month),
+        startsAt,
+        endsAt,
+        status: 'OPEN',
+      },
+    });
+  }
+
+  private buildPeriodLabel(year: number, month: number) {
+    const formatter = new Intl.DateTimeFormat('es-CO', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+    const rawLabel = formatter.format(new Date(Date.UTC(year, month - 1, 1)));
+
+    return rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+  }
+
+  private async getFinancialAccountBalance(
+    tx: Prisma.TransactionClient | PrismaService,
+    accountId: string,
+    excludeAllocationId?: string,
+  ) {
+    const movements = await tx.financialAccountMovement.findMany({
+      where: {
+        accountId,
+        ...(excludeAllocationId
+          ? {
+              NOT: {
+                entityAllocationId: excludeAllocationId,
+              },
+            }
+          : {}),
+      },
+      select: {
+        movementType: true,
+        amount: true,
+      },
+    });
+
+    return movements.reduce((accumulator, movement) => {
+      const amount = Number(movement.amount);
+
+      return movement.movementType === 'ALLOCATION_DEBIT'
+        ? accumulator - amount
+        : accumulator + amount;
+    }, 0);
   }
 }

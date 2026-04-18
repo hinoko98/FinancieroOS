@@ -1,42 +1,13 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api/client';
-
-type AuthUser = {
-  sub: string;
-  username: string;
-  role: string;
-  fullName: string;
-  firstName: string;
-  lastName: string;
-};
-
-type AuthContextValue = {
-  user: AuthUser | null;
-  token: string | null;
-  hydrated: boolean;
-  login: (credentials: { username: string; password: string }) => Promise<void>;
-  register: (payload: {
-    firstName: string;
-    lastName: string;
-    nationalId: string;
-    birthDate: string;
-    password: string;
-  }) => Promise<void>;
-  logout: () => void;
-  updateUser: (nextUser: AuthUser) => void;
-};
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import {
+  AuthContext,
+  type AuthUser,
+  type RegisterPayload,
+} from './auth-context';
 
 const TOKEN_KEY = 'cf_token';
 const USER_KEY = 'cf_user';
@@ -50,6 +21,20 @@ function syncApiToken(token: string | null) {
   delete apiClient.defaults.headers.common.Authorization;
 }
 
+function normalizeAuthUser(user: AuthUser | null) {
+  if (!user) {
+    return null;
+  }
+
+  const resolvedId = user.id || user.sub;
+
+  return {
+    ...user,
+    id: resolvedId,
+    sub: user.sub || resolvedId,
+  };
+}
+
 function readStoredSession() {
   if (typeof window === 'undefined') {
     return { token: null, user: null };
@@ -59,7 +44,8 @@ function readStoredSession() {
   const storedUser = window.localStorage.getItem(USER_KEY);
 
   try {
-    const user = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
+    const rawUser = storedUser ? (JSON.parse(storedUser) as AuthUser) : null;
+    const user = normalizeAuthUser(rawUser);
     return { token, user };
   } catch {
     window.localStorage.removeItem(USER_KEY);
@@ -84,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applySession = useCallback(
     (nextToken: string | null, nextUser: AuthUser | null) => {
       syncApiToken(nextToken);
-      setSession({ token: nextToken, user: nextUser });
+      setSession({ token: nextToken, user: normalizeAuthUser(nextUser) });
     },
     [],
   );
@@ -116,16 +102,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const persistSession = useCallback(
     (nextToken: string, nextUser: AuthUser) => {
+      const normalizedUser = normalizeAuthUser(nextUser);
+      if (!normalizedUser) {
+        return;
+      }
+
       window.localStorage.setItem(TOKEN_KEY, nextToken);
-      window.localStorage.setItem(USER_KEY, JSON.stringify(nextUser));
-      applySession(nextToken, nextUser);
+      window.localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+      applySession(nextToken, normalizedUser);
       emitAuthChange();
     },
     [applySession],
   );
 
   const login = useCallback(
-    async (credentials: { username: string; password: string }) => {
+    async (credentials: { identifier: string; password: string }) => {
       const response = await apiClient.post('/auth/login', credentials);
       persistSession(response.data.accessToken, response.data.user);
       router.push('/');
@@ -134,18 +125,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const register = useCallback(
-    async (payload: {
-      firstName: string;
-      lastName: string;
-      nationalId: string;
-      birthDate: string;
-      password: string;
-    }) => {
+    async (payload: RegisterPayload) => {
       const response = await apiClient.post('/auth/register', payload);
-      persistSession(response.data.accessToken, response.data.user);
-      router.push('/');
+      return {
+        email: response.data.email as string,
+        delivery: response.data.delivery as 'EMAIL' | 'LOG',
+      };
     },
-    [persistSession, router],
+    [],
   );
 
   const logout = useCallback(() => {
@@ -183,14 +170,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth debe usarse dentro de AuthProvider');
-  }
-
-  return context;
 }
