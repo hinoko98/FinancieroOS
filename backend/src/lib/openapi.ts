@@ -19,11 +19,6 @@ export function createOpenApiDocument() {
     },
     paths: {
       '/': { get: { summary: 'Informacion general del sistema' } },
-      '/product-blueprint': {
-        get: {
-          summary: 'Consultar el blueprint funcional y tecnico del rediseño',
-        },
-      },
       '/health': { get: { summary: 'Healthcheck del servicio' } },
       '/admin/users': {
         get: {

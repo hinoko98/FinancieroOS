@@ -7,103 +7,17 @@ import {
   createTheme,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
-import { lightThemeColors } from '@/lib/settings/theme-presets';
-
-type MuiThemeSnapshot = {
-  mode: 'light' | 'dark';
-  palette: {
-    brand: string;
-    warning: string;
-    success: string;
-    danger: string;
-    surface: string;
-    panelStrong: string;
-    ink: string;
-    muted: string;
-    line: string;
-  };
-};
-
-const fallbackThemeSnapshot: MuiThemeSnapshot = {
-  mode: 'light',
-  palette: {
-    brand: lightThemeColors.dashboardBrandColor,
-    warning: lightThemeColors.dashboardWarningColor,
-    success: lightThemeColors.dashboardSuccessColor,
-    danger: lightThemeColors.dashboardDangerColor,
-    surface: lightThemeColors.dashboardSurfaceColor,
-    panelStrong: lightThemeColors.dashboardPanelStrongColor,
-    ink: lightThemeColors.dashboardInkColor,
-    muted: lightThemeColors.dashboardMutedColor,
-    line: lightThemeColors.dashboardLineColor,
-  },
-};
-
-function readCssColor(
-  styles: CSSStyleDeclaration,
-  variableName: string,
-  fallback: string,
-) {
-  const value = styles.getPropertyValue(variableName).trim();
-  return value || fallback;
-}
-
-function readThemeSnapshot(): MuiThemeSnapshot {
-  if (typeof document === 'undefined') {
-    return fallbackThemeSnapshot;
-  }
-
-  const root = document.documentElement;
-  const styles = window.getComputedStyle(root);
-
-  return {
-    mode: root.dataset.dashboardTheme === 'dark' ? 'dark' : 'light',
-    palette: {
-      brand: readCssColor(
-        styles,
-        '--color-brand',
-        fallbackThemeSnapshot.palette.brand,
-      ),
-      warning: readCssColor(
-        styles,
-        '--color-warning',
-        fallbackThemeSnapshot.palette.warning,
-      ),
-      success: readCssColor(
-        styles,
-        '--color-success',
-        fallbackThemeSnapshot.palette.success,
-      ),
-      danger: readCssColor(
-        styles,
-        '--color-danger',
-        fallbackThemeSnapshot.palette.danger,
-      ),
-      surface: readCssColor(
-        styles,
-        '--color-surface',
-        fallbackThemeSnapshot.palette.surface,
-      ),
-      panelStrong: readCssColor(
-        styles,
-        '--color-panel-strong',
-        fallbackThemeSnapshot.palette.panelStrong,
-      ),
-      ink: readCssColor(styles, '--color-ink', fallbackThemeSnapshot.palette.ink),
-      muted: readCssColor(
-        styles,
-        '--color-muted',
-        fallbackThemeSnapshot.palette.muted,
-      ),
-      line: readCssColor(styles, '--color-line', fallbackThemeSnapshot.palette.line),
-    },
-  };
-}
 
 export function MuiProvider({ children }: { children: React.ReactNode }) {
-  const [themeSnapshot, setThemeSnapshot] = useState<MuiThemeSnapshot>(() =>
-    readThemeSnapshot(),
-  );
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    if (typeof document === 'undefined') {
+      return 'light';
+    }
+
+    return document.documentElement.dataset.dashboardTheme === 'dark'
+      ? 'dark'
+      : 'light';
+  });
 
   useEffect(() => {
     if (typeof document === 'undefined') {
@@ -112,7 +26,7 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
 
     const root = document.documentElement;
     const syncThemeMode = () => {
-      setThemeSnapshot(readThemeSnapshot());
+      setThemeMode(root.dataset.dashboardTheme === 'dark' ? 'dark' : 'light');
     };
 
     syncThemeMode();
@@ -120,7 +34,7 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
     const observer = new MutationObserver(syncThemeMode);
     observer.observe(root, {
       attributes: true,
-      attributeFilter: ['data-dashboard-theme', 'style'],
+      attributeFilter: ['data-dashboard-theme'],
     });
 
     return () => observer.disconnect();
@@ -141,28 +55,28 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
           borderRadius: 14,
         },
         palette: {
-          mode: themeSnapshot.mode,
+          mode: themeMode,
           primary: {
-            main: themeSnapshot.palette.brand,
+            main: 'var(--color-brand)',
           },
           secondary: {
-            main: themeSnapshot.palette.warning,
+            main: 'var(--color-warning)',
           },
           success: {
-            main: themeSnapshot.palette.success,
+            main: 'var(--color-success)',
           },
           error: {
-            main: themeSnapshot.palette.danger,
+            main: 'var(--color-danger)',
           },
           background: {
-            default: themeSnapshot.palette.surface,
-            paper: themeSnapshot.palette.panelStrong,
+            default: 'var(--color-surface)',
+            paper: 'var(--color-panel-strong)',
           },
           text: {
-            primary: themeSnapshot.palette.ink,
-            secondary: themeSnapshot.palette.muted,
+            primary: 'var(--color-ink)',
+            secondary: 'var(--color-muted)',
           },
-          divider: themeSnapshot.palette.line,
+          divider: 'var(--color-line)',
         },
         components: {
           MuiCssBaseline: {
@@ -205,7 +119,7 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
           },
         },
       }),
-    [themeSnapshot],
+    [themeMode],
   );
 
   return (

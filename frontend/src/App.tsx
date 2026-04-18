@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-do
 import AdministrationFinanceStructurePage from '@/app/administracion/estructura-financiera/page';
 import AdministrationPage from '@/app/administracion/page';
 import AdministrationPlatformPage from '@/app/administracion/plataforma/page';
-import AdministrationRedesignMvpPage from '@/app/administracion/rediseno-mvp/page';
 import AdministrationUsersPage from '@/app/administracion/usuarios/page';
 import SharedEntitiesPage from '@/app/compartidos/page';
 import ConfigurationPage from '@/app/configuracion/page';
@@ -46,7 +45,6 @@ function DocumentTitleSync() {
         'Estructura financiera | Control Financiero',
       ],
       ['/administracion/plataforma', 'Ajustes de plataforma | Control Financiero'],
-      ['/administracion/rediseno-mvp', 'Rediseño MVP | Control Financiero'],
     ]);
 
     if (location.pathname.startsWith('/entidades/')) {
@@ -82,10 +80,6 @@ export function App() {
         <Route
           path="/administracion/plataforma"
           element={<AdministrationPlatformPage />}
-        />
-        <Route
-          path="/administracion/rediseno-mvp"
-          element={<AdministrationRedesignMvpPage />}
         />
         <Route path="/mi-perfil" element={<ProfilePage />} />
         <Route path="/ajustes" element={<Navigate to="/administracion/plataforma" replace />} />
