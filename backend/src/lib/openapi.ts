@@ -40,6 +40,9 @@ export function createOpenApiDocument() {
       },
       '/auth/register': { post: { summary: 'Registro de usuario' } },
       '/auth/login': { post: { summary: 'Inicio de sesion' } },
+      '/auth/verify-email': {
+        get: { summary: 'Verificar correo electronico' },
+      },
       '/auth/me': {
         get: {
           summary: 'Perfil autenticado',

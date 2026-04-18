@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const login = useCallback(
-    async (credentials: { username: string; password: string }) => {
+    async (credentials: { identifier: string; password: string }) => {
       const response = await apiClient.post('/auth/login', credentials);
       persistSession(response.data.accessToken, response.data.user);
       router.push('/');
@@ -128,7 +128,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (payload: RegisterPayload) => {
       const response = await apiClient.post('/auth/register', payload);
       return {
-        username: response.data.user.username as string,
+        email: response.data.email as string,
+        delivery: response.data.delivery as 'EMAIL' | 'LOG',
       };
     },
     [],

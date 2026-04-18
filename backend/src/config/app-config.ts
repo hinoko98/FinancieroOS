@@ -3,8 +3,17 @@ import 'dotenv/config';
 export type AppConfig = {
   port: number;
   frontendUrl: string;
+  publicApiUrl: string;
   jwtSecret: string;
   jwtExpiresIn: string;
+  mail: {
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    password: string;
+    from: string;
+  };
   defaultAdmin: {
     username: string;
     password: string;
@@ -27,6 +36,16 @@ function readNumber(name: string, fallback: number) {
   return Number.isFinite(parsedValue) ? parsedValue : fallback;
 }
 
+function readBoolean(name: string, fallback: boolean) {
+  const value = process.env[name]?.trim().toLowerCase();
+
+  if (!value) {
+    return fallback;
+  }
+
+  return value === 'true' || value === '1' || value === 'yes';
+}
+
 export function loadConfig(): AppConfig {
   const firstName = readString('DEFAULT_ADMIN_FIRST_NAME', 'Admin');
   const lastName = readString('DEFAULT_ADMIN_LAST_NAME', 'Principal');
@@ -34,8 +53,17 @@ export function loadConfig(): AppConfig {
   return {
     port: readNumber('PORT', 3000),
     frontendUrl: readString('FRONTEND_URL', 'http://localhost:3001'),
+    publicApiUrl: readString('PUBLIC_API_URL', 'http://localhost:3000/api/v1'),
     jwtSecret: readString('JWT_SECRET', 'change_me'),
     jwtExpiresIn: readString('JWT_EXPIRES_IN', '1d'),
+    mail: {
+      host: readString('SMTP_HOST', ''),
+      port: readNumber('SMTP_PORT', 587),
+      secure: readBoolean('SMTP_SECURE', false),
+      user: readString('SMTP_USER', ''),
+      password: readString('SMTP_PASSWORD', ''),
+      from: readString('MAIL_FROM', 'no-reply@controlfinanciero.local'),
+    },
     defaultAdmin: {
       username: readString('DEFAULT_ADMIN_USERNAME', 'admin').toLowerCase(),
       password: readString('DEFAULT_ADMIN_PASSWORD', 'admin123'),

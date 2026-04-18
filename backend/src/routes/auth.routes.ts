@@ -40,6 +40,36 @@ export function createAuthRouter(authService: AuthService, jwtSecret: string) {
   );
 
   router.get(
+    '/verify-email',
+    asyncHandler(async (request, response) => {
+      const rawToken = request.query.token;
+      const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+
+      if (!token || typeof token !== 'string') {
+        response.redirect(
+          `${process.env.FRONTEND_URL ?? 'http://localhost:3001'}/login?verified=0&reason=token`,
+        );
+        return;
+      }
+
+      try {
+        await authService.verifyEmail(token);
+        response.redirect(
+          `${process.env.FRONTEND_URL ?? 'http://localhost:3001'}/login?verified=1`,
+        );
+      } catch (error) {
+        const reason =
+          error instanceof Error
+            ? encodeURIComponent(error.message)
+            : 'verificacion';
+        response.redirect(
+          `${process.env.FRONTEND_URL ?? 'http://localhost:3001'}/login?verified=0&reason=${reason}`,
+        );
+      }
+    }),
+  );
+
+  router.get(
     '/me',
     requireAuth(jwtSecret),
     asyncHandler(async (request, response) => {

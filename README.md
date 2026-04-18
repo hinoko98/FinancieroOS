@@ -1,6 +1,6 @@
 # Control Financiero
 
-Base inicial de un sistema web nuevo para control financiero integral y operativo.
+FinancieroOS permite controlar fondos asignados, servicios asociados, pagos ejecutados y trazabilidad operativa por entidad, con permisos multiusuario y auditoría.
 
 ## Estructura
 

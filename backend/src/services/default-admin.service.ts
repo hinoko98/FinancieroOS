@@ -35,6 +35,7 @@ export class DefaultAdminService {
         passwordHash,
         role: UserRole.ADMIN,
         status: RecordStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
       },
     });
 

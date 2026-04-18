@@ -21,19 +21,22 @@ const FINANCIAL_ACCOUNT_TYPES = [
   'OTRO',
 ] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type PlainObject = Record<string, unknown>;
 
 export type RegisterInput = {
   firstName: string;
   lastName: string;
+  email: string;
   nationalId: string;
   birthDate: string;
   password: string;
+  confirmPassword: string;
 };
 
 export type LoginInput = {
-  username: string;
+  identifier: string;
   password: string;
 };
 
@@ -260,6 +263,31 @@ function readRequiredDateString(payload: PlainObject, key: string) {
   return value;
 }
 
+function assertMinimumAge(
+  dateString: string,
+  minimumAge: number,
+  field: string,
+) {
+  const birthDate = new Date(dateString);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age -= 1;
+  }
+
+  if (age < minimumAge) {
+    throw new HttpError(
+      400,
+      `El campo ${field} requiere una edad minima de ${minimumAge} anos`,
+    );
+  }
+}
+
 function readOptionalDateString(payload: PlainObject, key: string) {
   const value = payload[key];
 
@@ -422,10 +450,26 @@ export function parseRegisterInput(value: unknown): RegisterInput {
   assertAllowedKeys(payload, [
     'firstName',
     'lastName',
+    'email',
     'nationalId',
     'birthDate',
     'password',
+    'confirmPassword',
   ]);
+
+  const birthDate = readRequiredDateString(payload, 'birthDate');
+  const password = readRequiredString(payload, 'password', {
+    minLength: 8,
+  });
+  const confirmPassword = readRequiredString(payload, 'confirmPassword', {
+    minLength: 8,
+  });
+
+  if (password !== confirmPassword) {
+    throw new HttpError(400, 'La confirmacion de contrasena no coincide');
+  }
+
+  assertMinimumAge(birthDate, 14, 'birthDate');
 
   return {
     firstName: readRequiredString(payload, 'firstName', {
@@ -436,27 +480,31 @@ export function parseRegisterInput(value: unknown): RegisterInput {
       minLength: 2,
       maxLength: 60,
     }),
+    email: readRequiredString(payload, 'email', {
+      maxLength: 120,
+      pattern: EMAIL_REGEX,
+      patternMessage: 'El correo electronico no es valido',
+    }).toLowerCase(),
     nationalId: readRequiredString(payload, 'nationalId', {
       minLength: 6,
       maxLength: 20,
       pattern: /^[0-9]+$/,
       patternMessage: 'La cedula solo puede contener numeros',
     }),
-    birthDate: readRequiredDateString(payload, 'birthDate'),
-    password: readRequiredString(payload, 'password', {
-      minLength: 8,
-    }),
+    birthDate,
+    password,
+    confirmPassword,
   };
 }
 
 export function parseLoginInput(value: unknown): LoginInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['username', 'password']);
+  assertAllowedKeys(payload, ['identifier', 'password']);
 
   return {
-    username: readRequiredString(payload, 'username', {
+    identifier: readRequiredString(payload, 'identifier', {
       minLength: 3,
-      maxLength: 30,
+      maxLength: 120,
     }),
     password: readRequiredString(payload, 'password', {
       minLength: 8,
@@ -480,6 +528,9 @@ export function parseUpdateProfileInput(value: unknown): UpdateProfileInput {
   const payload = ensurePlainObject(value);
   assertAllowedKeys(payload, ['firstName', 'lastName', 'birthDate']);
 
+  const birthDate = readRequiredDateString(payload, 'birthDate');
+  assertMinimumAge(birthDate, 14, 'birthDate');
+
   return {
     firstName: readRequiredString(payload, 'firstName', {
       minLength: 2,
@@ -489,7 +540,7 @@ export function parseUpdateProfileInput(value: unknown): UpdateProfileInput {
       minLength: 2,
       maxLength: 60,
     }),
-    birthDate: readRequiredDateString(payload, 'birthDate'),
+    birthDate,
   };
 }
 

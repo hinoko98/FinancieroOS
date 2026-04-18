@@ -1,5 +1,6 @@
 import { RecordStatus, type Prisma, UserRole } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { AppConfig } from '../config/app-config';
 import { HttpError } from '../lib/http-error';
@@ -12,22 +13,39 @@ import type {
 import { PrismaService } from '../lib/prisma';
 import type { AuthUser, RequestMetadata } from '../types/auth';
 import { AuditService } from './audit.service';
+import { EmailService } from './email.service';
 
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
     private readonly config: AppConfig,
+    private readonly emailService: EmailService,
   ) {}
 
   async register(dto: RegisterInput, metadata?: RequestMetadata) {
     const nationalId = dto.nationalId.trim();
+    const email = dto.email.trim().toLowerCase();
+
+    await this.cleanupExpiredPendingUsers([{ nationalId }, { email }]);
+
     const existingUserByNationalId = await this.prisma.user.findUnique({
       where: { nationalId },
     });
 
     if (existingUserByNationalId) {
       throw new HttpError(400, 'Ya existe un usuario con esa cedula');
+    }
+
+    const existingUserByEmail = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUserByEmail) {
+      throw new HttpError(
+        400,
+        'Ya existe un usuario con ese correo electronico',
+      );
     }
 
     const firstName = this.normalizePersonName(dto.firstName);
@@ -41,6 +59,8 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const usersCount = await this.prisma.user.count();
     const nextRole = usersCount === 0 ? UserRole.ADMIN : UserRole.OPERATOR;
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const user = await this.prisma.user.create({
       data: {
@@ -48,12 +68,37 @@ export class AuthService {
         lastName,
         fullName,
         username,
+        email,
         nationalId,
         birthDate: new Date(dto.birthDate),
         passwordHash,
         role: nextRole,
+        status: RecordStatus.INACTIVE,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
       },
     });
+
+    const verificationUrl = `${this.config.publicApiUrl}/auth/verify-email?token=${verificationToken}`;
+    let deliveryResult: { delivery: 'EMAIL' | 'LOG' };
+
+    try {
+      deliveryResult = await this.emailService.sendVerificationEmail({
+        to: email,
+        fullName,
+        username,
+        verificationUrl,
+      });
+    } catch {
+      await this.prisma.user.delete({
+        where: { id: user.id },
+      });
+
+      throw new HttpError(
+        500,
+        'No fue posible enviar el correo de verificacion. Intenta nuevamente',
+      );
+    }
 
     await this.auditService.log({
       entityName: 'User',
@@ -63,27 +108,57 @@ export class AuthService {
       performedById: user.id,
       after: {
         username: user.username,
+        email: user.email,
         role: user.role,
         nationalIdMasked: this.maskNationalId(user.nationalId),
         birthDate: user.birthDate,
+        verificationExpiresAt,
       },
       metadata: {
         ipAddress: metadata?.ipAddress ?? null,
         userAgent: metadata?.userAgent ?? null,
+        delivery: deliveryResult.delivery,
       },
     });
 
-    return this.buildAuthResponse(user);
+    return {
+      verificationRequired: true,
+      email,
+      delivery: deliveryResult.delivery,
+    };
   }
 
   async login(dto: LoginInput, metadata?: RequestMetadata) {
-    const normalizedUsername = dto.username.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
-      where: { username: normalizedUsername },
+    const identifier = dto.identifier.trim().toLowerCase();
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ username: identifier }, { email: identifier }],
+      },
     });
 
-    if (!user || user.status !== RecordStatus.ACTIVE) {
+    if (!user) {
       throw new HttpError(401, 'Credenciales invalidas');
+    }
+
+    if (
+      (Boolean(user.email) && !user.emailVerifiedAt) ||
+      user.status !== RecordStatus.ACTIVE
+    ) {
+      if (
+        user.emailVerificationExpiresAt &&
+        user.emailVerificationExpiresAt.getTime() < Date.now()
+      ) {
+        await this.deleteExpiredPendingUser(user.id);
+        throw new HttpError(
+          401,
+          'La verificacion del correo expiro. Debes crear la cuenta nuevamente',
+        );
+      }
+
+      throw new HttpError(
+        401,
+        'Debes verificar tu correo electronico antes de iniciar sesion',
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -127,6 +202,51 @@ export class AuthService {
     });
 
     return this.buildAuthResponse(user);
+  }
+
+  async verifyEmail(token: string) {
+    const verificationToken = token.trim();
+
+    if (!verificationToken) {
+      throw new HttpError(400, 'Token de verificacion invalido');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { emailVerificationToken: verificationToken },
+    });
+
+    if (!user) {
+      throw new HttpError(400, 'El token de verificacion no es valido');
+    }
+
+    if (
+      !user.emailVerificationExpiresAt ||
+      user.emailVerificationExpiresAt.getTime() < Date.now()
+    ) {
+      await this.deleteExpiredPendingUser(user.id);
+      throw new HttpError(
+        400,
+        'La verificacion del correo expiro. Debes crear la cuenta nuevamente',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        status: RecordStatus.ACTIVE,
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+
+    await this.auditService.log({
+      entityName: 'User',
+      entityId: user.id,
+      action: 'ACTIVATE',
+      summary: `Verificacion de correo para ${user.username}`,
+      performedById: user.id,
+    });
   }
 
   async changePassword(userId: string, dto: ChangePasswordInput) {
@@ -300,6 +420,37 @@ export class AuthService {
     }
 
     return candidate.slice(0, 30);
+  }
+
+  private async cleanupExpiredPendingUsers(
+    conditions: Array<
+      | { nationalId: string; email?: never }
+      | { email: string; nationalId?: never }
+    >,
+  ) {
+    for (const condition of conditions) {
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          ...condition,
+          status: RecordStatus.INACTIVE,
+          emailVerifiedAt: null,
+        },
+      });
+
+      if (
+        existingUser &&
+        existingUser.emailVerificationExpiresAt &&
+        existingUser.emailVerificationExpiresAt.getTime() < Date.now()
+      ) {
+        await this.deleteExpiredPendingUser(existingUser.id);
+      }
+    }
+  }
+
+  private async deleteExpiredPendingUser(userId: string) {
+    await this.prisma.user.delete({
+      where: { id: userId },
+    });
   }
 
   private maskNationalId(value: string) {
