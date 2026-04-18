@@ -31,6 +31,7 @@ enum AuditAction {
 enum ThemePreset {
   LIGHT
   DARK
+  GRAPHITE
   CUSTOM
 }
 
@@ -55,6 +56,17 @@ enum FinancialAccountType {
 enum FinancialMovementType {
   INCOME
   ALLOCATION_DEBIT
+}
+
+enum FinancialEntryDirection {
+  INCOME
+  EXPENSE
+}
+
+enum FinancialPeriodStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
 }
 
 model User {
@@ -128,6 +140,9 @@ model TrackingEntityItem {
 model TrackingEntityRecord {
   id            String             @id @default(uuid())
   itemId        String
+  periodId      String?
+  financialCategoryId String?
+  financialSubcategoryId String?
   amount        Decimal            @db.Decimal(18, 2)
   occurredAt    DateTime
   notes         String?
@@ -135,10 +150,15 @@ model TrackingEntityRecord {
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
   item          TrackingEntityItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  period        FinancialPeriod?   @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  financialCategory FinancialCategory? @relation(fields: [financialCategoryId], references: [id], onDelete: SetNull)
+  financialSubcategory FinancialSubcategory? @relation(fields: [financialSubcategoryId], references: [id], onDelete: SetNull)
   performedBy   User               @relation("TrackingEntityRecordPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
 
   @@index([itemId, occurredAt])
   @@index([performedById, occurredAt])
+  @@index([periodId, occurredAt])
+  @@index([financialCategoryId, occurredAt])
 }
 
 model TrackingEntityAllocation {
@@ -177,11 +197,63 @@ model FinancialAccount {
   @@index([userId, createdAt])
 }
 
+model FinancialPeriod {
+  id        String                @id @default(uuid())
+  year      Int
+  month     Int
+  label     String
+  startsAt  DateTime              @db.Date
+  endsAt    DateTime              @db.Date
+  status    FinancialPeriodStatus @default(OPEN)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  movements FinancialAccountMovement[]
+  entityRecords TrackingEntityRecord[]
+
+  @@unique([year, month])
+  @@index([status, startsAt])
+}
+
+model FinancialCategory {
+  id             String                  @id @default(uuid())
+  direction      FinancialEntryDirection
+  name           String
+  normalizedName String
+  description    String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  subcategories  FinancialSubcategory[]
+  movements      FinancialAccountMovement[]
+  entityRecords  TrackingEntityRecord[]
+
+  @@unique([direction, normalizedName])
+  @@index([direction, createdAt])
+}
+
+model FinancialSubcategory {
+  id             String                  @id @default(uuid())
+  categoryId     String
+  name           String
+  normalizedName String
+  description    String?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  category       FinancialCategory       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  movements      FinancialAccountMovement[]
+  entityRecords  TrackingEntityRecord[]
+
+  @@unique([categoryId, normalizedName])
+  @@index([categoryId, createdAt])
+}
+
 model FinancialAccountMovement {
   id                 String                @id @default(uuid())
   accountId          String
   movementType       FinancialMovementType
   category           String?
+  periodId           String?
+  financialCategoryId String?
+  financialSubcategoryId String?
   amount             Decimal               @db.Decimal(18, 2)
   sourceLabel        String?
   occurredAt         DateTime
@@ -190,11 +262,16 @@ model FinancialAccountMovement {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   account            FinancialAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  period             FinancialPeriod?      @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  financialCategory  FinancialCategory?    @relation(fields: [financialCategoryId], references: [id], onDelete: SetNull)
+  financialSubcategory FinancialSubcategory? @relation(fields: [financialSubcategoryId], references: [id], onDelete: SetNull)
   performedBy        User                  @relation("FinancialAccountMovementPerformedBy", fields: [performedById], references: [id], onDelete: Restrict)
   entityAllocation   TrackingEntityAllocation? @relation("FinancialAccountMovementAllocation", fields: [entityAllocationId], references: [id], onDelete: SetNull)
 
   @@index([accountId, occurredAt])
   @@index([performedById, occurredAt])
+  @@index([periodId, occurredAt])
+  @@index([financialCategoryId, occurredAt])
 }
 
 model TrackingEntityShare {
@@ -245,6 +322,7 @@ model PlatformSetting {
   timezone       String   @default("America/Bogota")
   currencyCode   String   @default("COP")
   supportEmail   String?
+  bankCatalog    String[] @default([])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

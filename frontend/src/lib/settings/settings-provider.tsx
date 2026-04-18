@@ -70,6 +70,10 @@ function resolveThemeMode(
     return 'dark' as const;
   }
 
+  if (preset === 'GRAPHITE') {
+    return 'dark' as const;
+  }
+
   if (preset === 'CUSTOM' && settings?.customThemeBase === 'DARK') {
     return 'dark' as const;
   }

@@ -27,8 +27,6 @@ export class AuthService {
     const nationalId = dto.nationalId.trim();
     const email = dto.email.trim().toLowerCase();
 
-    await this.cleanupExpiredPendingUsers([{ nationalId }, { email }]);
-
     const existingUserByNationalId = await this.prisma.user.findUnique({
       where: { nationalId },
     });
@@ -73,32 +71,19 @@ export class AuthService {
         birthDate: new Date(dto.birthDate),
         passwordHash,
         role: nextRole,
-        status: RecordStatus.INACTIVE,
+        status: RecordStatus.ACTIVE,
         emailVerificationToken: verificationToken,
         emailVerificationExpiresAt: verificationExpiresAt,
       },
     });
 
     const verificationUrl = `${this.config.publicApiUrl}/auth/verify-email?token=${verificationToken}`;
-    let deliveryResult: { delivery: 'EMAIL' | 'LOG' };
-
-    try {
-      deliveryResult = await this.emailService.sendVerificationEmail({
-        to: email,
-        fullName,
-        username,
-        verificationUrl,
-      });
-    } catch {
-      await this.prisma.user.delete({
-        where: { id: user.id },
-      });
-
-      throw new HttpError(
-        500,
-        'No fue posible enviar el correo de verificacion. Intenta nuevamente',
-      );
-    }
+    const deliveryResult = await this.emailService.sendVerificationEmail({
+      to: email,
+      fullName,
+      username,
+      verificationUrl,
+    });
 
     await this.auditService.log({
       entityName: 'User',
@@ -130,7 +115,7 @@ export class AuthService {
 
   async login(dto: LoginInput, metadata?: RequestMetadata) {
     const identifier = dto.identifier.trim().toLowerCase();
-    const user = await this.prisma.user.findFirst({
+    let user = await this.prisma.user.findFirst({
       where: {
         OR: [{ username: identifier }, { email: identifier }],
       },
@@ -140,27 +125,6 @@ export class AuthService {
       throw new HttpError(401, 'Credenciales invalidas');
     }
 
-    if (
-      (Boolean(user.email) && !user.emailVerifiedAt) ||
-      user.status !== RecordStatus.ACTIVE
-    ) {
-      if (
-        user.emailVerificationExpiresAt &&
-        user.emailVerificationExpiresAt.getTime() < Date.now()
-      ) {
-        await this.deleteExpiredPendingUser(user.id);
-        throw new HttpError(
-          401,
-          'La verificacion del correo expiro. Debes crear la cuenta nuevamente',
-        );
-      }
-
-      throw new HttpError(
-        401,
-        'Debes verificar tu correo electronico antes de iniciar sesion',
-      );
-    }
-
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       user.passwordHash,
@@ -168,6 +132,17 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new HttpError(401, 'Credenciales invalidas');
+    }
+
+    if (user.status !== RecordStatus.ACTIVE) {
+      if (user.email && !user.emailVerifiedAt) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { status: RecordStatus.ACTIVE },
+        });
+      } else {
+        throw new HttpError(401, 'Tu cuenta no se encuentra activa');
+      }
     }
 
     const loginDate = new Date();
@@ -223,17 +198,15 @@ export class AuthService {
       !user.emailVerificationExpiresAt ||
       user.emailVerificationExpiresAt.getTime() < Date.now()
     ) {
-      await this.deleteExpiredPendingUser(user.id);
       throw new HttpError(
         400,
-        'La verificacion del correo expiro. Debes crear la cuenta nuevamente',
+        'El enlace de validacion expiro. Solicita uno nuevo desde tu perfil',
       );
     }
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        status: RecordStatus.ACTIVE,
         emailVerifiedAt: new Date(),
         emailVerificationToken: null,
         emailVerificationExpiresAt: null,
@@ -247,6 +220,81 @@ export class AuthService {
       summary: `Verificacion de correo para ${user.username}`,
       performedById: user.id,
     });
+  }
+
+  async resendEmailVerification(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        emailVerifiedAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new HttpError(401, 'Usuario no encontrado');
+    }
+
+    if (!user.email) {
+      throw new HttpError(
+        400,
+        'Tu cuenta no tiene correo electronico asociado',
+      );
+    }
+
+    if (user.emailVerifiedAt) {
+      return {
+        email: user.email,
+        delivery: 'EMAIL' as const,
+        alreadyVerified: true,
+        verificationExpiresAt: null,
+      };
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationToken: verificationToken,
+        emailVerificationExpiresAt: verificationExpiresAt,
+        status: RecordStatus.ACTIVE,
+      },
+    });
+
+    const verificationUrl = `${this.config.publicApiUrl}/auth/verify-email?token=${verificationToken}`;
+    const deliveryResult = await this.emailService.sendVerificationEmail({
+      to: user.email,
+      fullName: user.fullName,
+      username: user.username,
+      verificationUrl,
+    });
+
+    await this.auditService.log({
+      entityName: 'User',
+      entityId: user.id,
+      action: 'UPDATE',
+      summary: `Reenvio de validacion de correo para ${user.username}`,
+      performedById: user.id,
+      after: {
+        email: user.email,
+        verificationExpiresAt,
+      },
+      metadata: {
+        delivery: deliveryResult.delivery,
+      },
+    });
+
+    return {
+      email: user.email,
+      delivery: deliveryResult.delivery,
+      alreadyVerified: false,
+      verificationExpiresAt,
+    };
   }
 
   async changePassword(userId: string, dto: ChangePasswordInput) {
@@ -318,6 +366,8 @@ export class AuthService {
         status: true,
         lastLoginAt: true,
         createdAt: true,
+        emailVerifiedAt: true,
+        emailVerificationExpiresAt: true,
       },
     });
 
@@ -353,6 +403,8 @@ export class AuthService {
         status: true,
         lastLoginAt: true,
         createdAt: true,
+        emailVerifiedAt: true,
+        emailVerificationExpiresAt: true,
       },
     });
 
@@ -421,38 +473,6 @@ export class AuthService {
 
     return candidate.slice(0, 30);
   }
-
-  private async cleanupExpiredPendingUsers(
-    conditions: Array<
-      | { nationalId: string; email?: never }
-      | { email: string; nationalId?: never }
-    >,
-  ) {
-    for (const condition of conditions) {
-      const existingUser = await this.prisma.user.findFirst({
-        where: {
-          ...condition,
-          status: RecordStatus.INACTIVE,
-          emailVerifiedAt: null,
-        },
-      });
-
-      if (
-        existingUser &&
-        existingUser.emailVerificationExpiresAt &&
-        existingUser.emailVerificationExpiresAt.getTime() < Date.now()
-      ) {
-        await this.deleteExpiredPendingUser(existingUser.id);
-      }
-    }
-  }
-
-  private async deleteExpiredPendingUser(userId: string) {
-    await this.prisma.user.delete({
-      where: { id: userId },
-    });
-  }
-
   private maskNationalId(value: string) {
     if (value.length <= 4) {
       return value;

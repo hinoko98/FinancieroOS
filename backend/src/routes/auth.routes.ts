@@ -105,5 +105,15 @@ export function createAuthRouter(authService: AuthService, jwtSecret: string) {
     }),
   );
 
+  router.post(
+    '/resend-verification',
+    requireAuth(jwtSecret),
+    asyncHandler(async (request, response) => {
+      const user = getAuthenticatedUser(request as AuthenticatedRequest);
+      const result = await authService.resendEmailVerification(user.sub);
+      response.json(result);
+    }),
+  );
+
   return router;
 }

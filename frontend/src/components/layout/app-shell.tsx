@@ -25,7 +25,15 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { useSettings } from '@/lib/settings/settings-context';
 import { UserIcon } from '@/lib/settings/user-icons';
 import { cn } from '@/lib/utils/cn';
-import { ENTITIES_QUERY_KEY, type Entity } from '@/features/entities/lib/entities';
+import {
+  ENTITIES_QUERY_KEY,
+  formatCurrency,
+  type Entity,
+} from '@/features/entities/lib/entities';
+import {
+  ADMIN_USERS_QUERY_KEY,
+  type ManagedUser,
+} from '@/features/admin/lib/admin';
 
 type PlatformSettings = {
   id: string;
@@ -55,6 +63,29 @@ type AuditLogEntry = {
     role: string;
   } | null;
 };
+
+type NotificationAlertType =
+  | 'ENTITY_LOW_BALANCE'
+  | 'SERVICE_OVERDUE'
+  | 'OVER_BUDGET'
+  | 'INCOMPLETE_USER'
+  | 'SUSPICIOUS_ACTIVITY'
+  | 'PAYMENT_WITHOUT_REFERENCE';
+
+type NotificationAlertTone = 'info' | 'warning' | 'danger';
+
+type NotificationAlert = {
+  id: string;
+  type: NotificationAlertType;
+  title: string;
+  description: string;
+  createdAt: string;
+  href: string;
+  tone: NotificationAlertTone;
+};
+
+const ALERT_READ_STORAGE_PREFIX = 'cf-read-alerts';
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
 function getPageTitle(pathname: string) {
   if (pathname.startsWith('/entidades/')) {
@@ -89,6 +120,10 @@ function getPageTitle(pathname: string) {
     return 'Usuarios del sistema';
   }
 
+  if (pathname === '/administracion/estructura-financiera') {
+    return 'Estructura financiera';
+  }
+
   if (pathname === '/administracion/plataforma' || pathname === '/ajustes') {
     return 'Ajustes de plataforma';
   }
@@ -108,6 +143,62 @@ function readStringFromPayload(
   return typeof value === 'string' ? value : null;
 }
 
+function getAlertStorageKey(userId: string) {
+  return `${ALERT_READ_STORAGE_PREFIX}:${userId}`;
+}
+
+function parseStoredAlertIds(value: string | null) {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function getNotificationTypeLabel(type: NotificationAlertType) {
+  switch (type) {
+    case 'ENTITY_LOW_BALANCE':
+      return 'Entidad con saldo bajo';
+    case 'SERVICE_OVERDUE':
+      return 'Servicio vencido';
+    case 'OVER_BUDGET':
+      return 'Gasto superior al presupuesto';
+    case 'INCOMPLETE_USER':
+      return 'Usuario nuevo sin completar perfil';
+    case 'SUSPICIOUS_ACTIVITY':
+      return 'Actividad sospechosa';
+    case 'PAYMENT_WITHOUT_REFERENCE':
+      return 'Pagos sin referencia';
+  }
+}
+
+function getNotificationToneClasses(tone: NotificationAlertTone) {
+  switch (tone) {
+    case 'danger':
+      return {
+        badge: 'bg-[#f8dfda] text-[var(--color-danger)]',
+        border: 'border-[var(--color-danger)]/25',
+      };
+    case 'warning':
+      return {
+        badge: 'bg-[#f7e8bf] text-[#8b5e17]',
+        border: 'border-[#d7c087]',
+      };
+    case 'info':
+      return {
+        badge: 'bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]',
+        border: 'border-[var(--color-line)]',
+      };
+  }
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -120,6 +211,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [adminSectionOpen, setAdminSectionOpen] = useState(true);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [readAlertIds, setReadAlertIds] = useState<string[]>([]);
+  const [notificationNow, setNotificationNow] = useState(() => Date.now());
 
   const entitiesQuery = useQuery({
     queryKey: ENTITIES_QUERY_KEY,
@@ -139,6 +232,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     },
     enabled: Boolean(user),
     staleTime: 30_000,
+  });
+
+  const adminUsersQuery = useQuery({
+    queryKey: ADMIN_USERS_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiClient.get<ManagedUser[]>('/admin/users');
+      return response.data;
+    },
+    enabled: user?.role === 'ADMIN',
+    staleTime: 60_000,
   });
 
   const platformSettingsQuery = useQuery({
@@ -171,6 +274,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = '';
     };
   }, [mobileSidebarOpen]);
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') {
+      setReadAlertIds([]);
+      return;
+    }
+
+    setReadAlertIds(
+      parseStoredAlertIds(window.localStorage.getItem(getAlertStorageKey(user.id))),
+    );
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(
+      getAlertStorageKey(user.id),
+      JSON.stringify(readAlertIds),
+    );
+  }, [readAlertIds, user]);
+
+  useEffect(() => {
+    setNotificationNow(Date.now());
+  }, [adminUsersQuery.data, auditLogsQuery.data, entitiesQuery.data]);
 
   const authDisplayName = useMemo(() => user?.fullName ?? '', [user?.fullName]);
 
@@ -206,68 +335,172 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }, [entitiesQuery.data, pathname]);
 
-  const unpaidItems = useMemo(
+  const notificationAlerts = useMemo(() => {
+    const alerts: NotificationAlert[] = [];
+    const now = notificationNow;
+
+    for (const entity of entitiesQuery.data ?? []) {
+      const lowBalanceThreshold = Math.max(50_000, entity.assignedAmount * 0.15);
+
+      if (
+        entity.assignedAmount > 0 &&
+        entity.availableBalance >= 0 &&
+        entity.availableBalance <= lowBalanceThreshold
+      ) {
+        alerts.push({
+          id: `entity-low-balance:${entity.id}`,
+          type: 'ENTITY_LOW_BALANCE',
+          title: `Saldo bajo en ${entity.name}`,
+          description: `${formatCurrency(entity.availableBalance)} disponibles de ${formatCurrency(entity.assignedAmount)} asignados.`,
+          createdAt: entity.updatedAt,
+          href: `/entidades/${entity.id}`,
+          tone: 'warning',
+        });
+      }
+
+      if (entity.availableBalance < 0) {
+        alerts.push({
+          id: `entity-over-budget:${entity.id}`,
+          type: 'OVER_BUDGET',
+          title: `${entity.name} supero el presupuesto`,
+          description: `El saldo disponible esta en ${formatCurrency(entity.availableBalance)} y requiere ajuste inmediato.`,
+          createdAt: entity.updatedAt,
+          href: `/entidades/${entity.id}`,
+          tone: 'danger',
+        });
+      }
+
+      for (const item of entity.items) {
+        const latestMovementAt = item.latestRecordAt ?? item.createdAt;
+        const itemAge = now - new Date(latestMovementAt).getTime();
+        const overdueWithoutPayments =
+          item.recordsCount === 0 && now - new Date(item.createdAt).getTime() >= 30 * DAY_IN_MS;
+        const overdueWithStalePayments =
+          item.latestRecordAt !== null && itemAge >= 35 * DAY_IN_MS;
+
+        if (overdueWithoutPayments || overdueWithStalePayments) {
+          alerts.push({
+            id: `service-overdue:${entity.id}:${item.id}`,
+            type: 'SERVICE_OVERDUE',
+            title: `Servicio vencido: ${item.name}`,
+            description: `${entity.name}${item.paymentReference ? ` / Ref ${item.paymentReference}` : ''} requiere revision o nuevo registro.`,
+            createdAt: latestMovementAt,
+            href: `/entidades/${entity.id}`,
+            tone: 'warning',
+          });
+        }
+
+        if (item.recordsCount > 0 && !item.paymentReference) {
+          alerts.push({
+            id: `payment-without-reference:${entity.id}:${item.id}`,
+            type: 'PAYMENT_WITHOUT_REFERENCE',
+            title: `Pago sin referencia: ${item.name}`,
+            description: `${entity.name} tiene pagos registrados para este servicio sin referencia asociada.`,
+            createdAt: item.latestRecordAt ?? item.updatedAt,
+            href: `/entidades/${entity.id}`,
+            tone: 'info',
+          });
+        }
+      }
+    }
+
+    if (user?.role === 'ADMIN') {
+      for (const managedUser of adminUsersQuery.data ?? []) {
+        const isRecentUser =
+          now - new Date(managedUser.createdAt).getTime() <= 14 * DAY_IN_MS;
+        const incompleteProfile =
+          !managedUser.lastLoginAt || !managedUser.emailVerifiedAt;
+
+        if (isRecentUser && incompleteProfile) {
+          alerts.push({
+            id: `incomplete-user:${managedUser.id}`,
+            type: 'INCOMPLETE_USER',
+            title: 'Usuario nuevo sin completar perfil',
+            description: `${managedUser.fullName} (@${managedUser.username}) aun tiene pendiente el cierre del perfil inicial.`,
+            createdAt: managedUser.createdAt,
+            href: '/administracion/usuarios',
+            tone: 'info',
+          });
+        }
+      }
+
+      const loginLogsByUser = new Map<
+        string,
+        {
+          latestLog: AuditLogEntry;
+          ipAddresses: Set<string>;
+        }
+      >();
+
+      for (const log of auditLogsQuery.data ?? []) {
+        if (log.action !== 'LOGIN' || !log.performedById) {
+          continue;
+        }
+
+        const createdAtTime = new Date(log.createdAt).getTime();
+        if (now - createdAtTime > DAY_IN_MS) {
+          continue;
+        }
+
+        const ipAddress = readStringFromPayload(log.metadata, 'ipAddress');
+        if (!ipAddress) {
+          continue;
+        }
+
+        const currentGroup = loginLogsByUser.get(log.performedById);
+
+        if (currentGroup) {
+          currentGroup.ipAddresses.add(ipAddress);
+          if (createdAtTime > new Date(currentGroup.latestLog.createdAt).getTime()) {
+            currentGroup.latestLog = log;
+          }
+          continue;
+        }
+
+        loginLogsByUser.set(log.performedById, {
+          latestLog: log,
+          ipAddresses: new Set([ipAddress]),
+        });
+      }
+
+      for (const [userId, group] of loginLogsByUser) {
+        if (group.ipAddresses.size < 2) {
+          continue;
+        }
+
+        alerts.push({
+          id: `suspicious-activity:${userId}`,
+          type: 'SUSPICIOUS_ACTIVITY',
+          title: 'Actividad sospechosa detectada',
+          description: `${group.latestLog.performedBy?.fullName ?? group.latestLog.performedBy?.username ?? 'Un usuario'} inicio sesion desde multiples IP recientes.`,
+          createdAt: group.latestLog.createdAt,
+          href: '/administracion/usuarios',
+          tone: 'danger',
+        });
+      }
+    }
+
+    return alerts
+      .sort(
+        (left, right) =>
+          new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+      )
+      .slice(0, 18);
+  }, [
+    adminUsersQuery.data,
+    auditLogsQuery.data,
+    entitiesQuery.data,
+    notificationNow,
+    user?.role,
+  ]);
+
+  const readAlertIdSet = useMemo(() => new Set(readAlertIds), [readAlertIds]);
+
+  const notificationCount = useMemo(
     () =>
-      (entitiesQuery.data ?? [])
-        .flatMap((entity) =>
-          entity.items
-            .filter((item) => item.recordsCount === 0)
-            .map((item) => ({
-              id: `${entity.id}-${item.id}`,
-              entityId: entity.id,
-              entityName: entity.name,
-              itemName: item.name,
-              paymentReference: item.paymentReference,
-              createdAt: item.createdAt,
-              accessLabel: entity.isOwner ? 'Propia' : 'Compartida',
-            })),
-        )
-        .sort(
-          (left, right) =>
-            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-        )
-        .slice(0, 6),
-    [entitiesQuery.data],
+      notificationAlerts.filter((alert) => !readAlertIdSet.has(alert.id)).length,
+    [notificationAlerts, readAlertIdSet],
   );
-
-  const relevantAuditLogs = useMemo(() => {
-    const accessibleEntityIds = new Set(
-      (entitiesQuery.data ?? []).map((entity) => entity.id),
-    );
-
-    return (auditLogsQuery.data ?? [])
-      .filter((log) => {
-        if (log.entityName === 'PlatformSetting' || log.entityName === 'UserSetting') {
-          return true;
-        }
-
-        if (log.entityName === 'TrackingEntity') {
-          return (
-            accessibleEntityIds.has(log.entityId) || log.performedById === user?.id
-          );
-        }
-
-        if (log.entityName === 'TrackingEntityShare') {
-          const relatedEntityId =
-            readStringFromPayload(log.after, 'entityId') ??
-            readStringFromPayload(log.before, 'entityId');
-          const affectsCurrentUser =
-            readStringFromPayload(log.after, 'username') === user?.username ||
-            readStringFromPayload(log.before, 'username') === user?.username;
-
-          return (
-            affectsCurrentUser ||
-            log.performedById === user?.id ||
-            (relatedEntityId ? accessibleEntityIds.has(relatedEntityId) : false)
-          );
-        }
-
-        return log.performedById === user?.id;
-      })
-      .slice(0, 8);
-  }, [auditLogsQuery.data, entitiesQuery.data, user?.id, user?.username]);
-
-  const notificationCount = unpaidItems.length + relevantAuditLogs.length;
 
   const entitiesLinkActive =
     pathname === '/entidades' ||
@@ -311,6 +544,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     setMobileSidebarOpen((current) => !current);
+  };
+
+  const markAlertAsRead = (alertId: string) => {
+    setReadAlertIds((current) =>
+      current.includes(alertId) ? current : [...current, alertId],
+    );
+  };
+
+  const markAllAlertsAsRead = () => {
+    setReadAlertIds((current) => [
+      ...new Set([...current, ...notificationAlerts.map((alert) => alert.id)]),
+    ]);
+  };
+
+  const openAlert = (alert: NotificationAlert) => {
+    markAlertAsRead(alert.id);
+    setNotificationsOpen(false);
+    router.push(alert.href);
   };
 
   return (
@@ -697,6 +948,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <span className="truncate">Usuarios</span>
                   </Link>
                   <Link
+                    href="/administracion/estructura-financiera"
+                    onClick={closeSidebarOnMobile}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[calc(var(--radius-control)-4px)] px-3 py-2 text-sm transition',
+                      pathname === '/administracion/estructura-financiera'
+                        ? 'bg-white/12 text-white'
+                        : 'text-[#f8e8d7]/76 hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <span className="truncate">Estructura financiera</span>
+                  </Link>
+                  <Link
                     href="/administracion/plataforma"
                     onClick={closeSidebarOnMobile}
                     className={cn(
@@ -773,68 +1036,120 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       Notificaciones
                     </p>
                     <p className="mt-1 text-sm text-[var(--color-muted)]">
-                      Ajustes, compartidos y recibos sin pago registrado.
+                      Solo alertas operativas y financieras del sistema.
                     </p>
                   </div>
 
-                  <div className="max-h-[28rem] space-y-4 overflow-y-auto px-2 py-3">
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold">Recibos pendientes</p>
-                      {unpaidItems.length ? (
-                        unpaidItems.map((item) => (
-                          <Link
-                            key={item.id}
-                            href={`/entidades/${item.entityId}`}
-                            onClick={() => setNotificationsOpen(false)}
-                            className="flex items-start gap-3 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 transition hover:border-[var(--color-brand)]"
-                          >
-                            <div className="rounded-[var(--radius-control)] bg-[#f7e8bf] p-2 text-[#8b5e17]">
-                              <ReceiptText className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-semibold">{item.itemName}</p>
-                              <p className="text-sm text-[var(--color-muted)]">
-                                {item.entityName}
-                                {item.paymentReference
-                                  ? ` / Ref ${item.paymentReference}`
-                                  : ''}
-                              </p>
-                              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#8b5e17]">
-                                {item.accessLabel} / Sin pago registrado
-                              </p>
-                            </div>
-                          </Link>
-                        ))
-                      ) : (
-                        <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-muted)]">
-                          No hay recibos pendientes sin pago registrado.
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between gap-3 px-2 pt-3">
+                    <p className="text-sm font-semibold">
+                      {notificationCount} pendientes de lectura
+                    </p>
+                    {notificationAlerts.length ? (
+                      <button
+                        type="button"
+                        onClick={markAllAlertsAsRead}
+                        className="text-sm font-semibold text-[var(--color-brand-deep)] transition hover:text-[var(--color-brand)]"
+                      >
+                        Marcar todas como leidas
+                      </button>
+                    ) : null}
+                  </div>
 
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold">Actividad reciente</p>
-                      {relevantAuditLogs.length ? (
-                        relevantAuditLogs.map((log) => (
-                          <div
-                            key={log.id}
-                            className="rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3"
+                  <div className="max-h-[28rem] space-y-3 overflow-y-auto px-2 py-3">
+                    {notificationAlerts.length ? (
+                      notificationAlerts.map((alert) => {
+                        const isRead = readAlertIdSet.has(alert.id);
+                        const toneClasses = getNotificationToneClasses(alert.tone);
+
+                        return (
+                          <article
+                            key={alert.id}
+                            className={cn(
+                              'rounded-[var(--radius-control)] border bg-white px-4 py-3 transition',
+                              toneClasses.border,
+                              isRead ? 'opacity-70' : 'shadow-sm',
+                            )}
                           >
-                            <p className="font-semibold">{log.summary}</p>
-                            <p className="mt-1 text-sm text-[var(--color-muted)]">
-                              {log.performedBy?.fullName ?? 'Sistema'}
-                            </p>
-                            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                              {createdAtFormatter.format(new Date(log.createdAt))}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-muted)]">
-                          No hay actividad reciente para mostrar.
-                        </div>
-                      )}
-                    </div>
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={cn(
+                                  'rounded-[var(--radius-control)] p-2',
+                                  toneClasses.badge,
+                                )}
+                              >
+                                {alert.type === 'ENTITY_LOW_BALANCE' ? (
+                                  <Building2 className="h-4 w-4" />
+                                ) : null}
+                                {alert.type === 'SERVICE_OVERDUE' ? (
+                                  <ReceiptText className="h-4 w-4" />
+                                ) : null}
+                                {alert.type === 'OVER_BUDGET' ? (
+                                  <HandCoins className="h-4 w-4" />
+                                ) : null}
+                                {alert.type === 'INCOMPLETE_USER' ? (
+                                  <ClipboardList className="h-4 w-4" />
+                                ) : null}
+                                {alert.type === 'SUSPICIOUS_ACTIVITY' ? (
+                                  <ShieldUser className="h-4 w-4" />
+                                ) : null}
+                                {alert.type === 'PAYMENT_WITHOUT_REFERENCE' ? (
+                                  <ReceiptText className="h-4 w-4" />
+                                ) : null}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-semibold">{alert.title}</p>
+                                  <span className="rounded-full bg-[var(--color-panel-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                                    {getNotificationTypeLabel(alert.type)}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]',
+                                      isRead
+                                        ? 'bg-[var(--color-panel-strong)] text-[var(--color-muted)]'
+                                        : 'bg-[var(--color-brand-soft)] text-[var(--color-brand-deep)]',
+                                    )}
+                                  >
+                                    {isRead ? 'Leida' : 'Nueva'}
+                                  </span>
+                                </div>
+
+                                <p className="mt-2 text-sm text-[var(--color-muted)]">
+                                  {alert.description}
+                                </p>
+                                <p className="mt-2 text-xs uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                                  {createdAtFormatter.format(new Date(alert.createdAt))}
+                                </p>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => openAlert(alert)}
+                                    className="text-sm font-semibold text-[var(--color-brand-deep)] transition hover:text-[var(--color-brand)]"
+                                  >
+                                    Leer
+                                  </button>
+                                  {!isRead ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => markAlertAsRead(alert.id)}
+                                      className="text-sm font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-ink)]"
+                                    >
+                                      Marcar como leida
+                                    </button>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          </article>
+                        );
+                      })
+                    ) : (
+                      <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-muted)]">
+                        No hay alertas activas en este momento.
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : null}

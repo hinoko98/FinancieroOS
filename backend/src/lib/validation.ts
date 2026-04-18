@@ -9,7 +9,7 @@ const USER_ICON_OPTIONS = [
   'badge-dollar-sign',
 ] as const;
 
-const THEME_PRESETS = ['LIGHT', 'DARK', 'CUSTOM'] as const;
+const THEME_PRESETS = ['LIGHT', 'DARK', 'GRAPHITE', 'CUSTOM'] as const;
 const THEME_BASE_PRESETS = ['LIGHT', 'DARK'] as const;
 const ENTITY_SHARE_PERMISSIONS = ['VIEW', 'EDIT', 'MANAGE'] as const;
 const USER_ROLES = ['ADMIN', 'MANAGER', 'ANALYST', 'OPERATOR'] as const;
@@ -20,6 +20,8 @@ const FINANCIAL_ACCOUNT_TYPES = [
   'BILLETERA',
   'OTRO',
 ] as const;
+const FINANCIAL_ENTRY_DIRECTIONS = ['INCOME', 'EXPENSE'] as const;
+const FINANCIAL_PERIOD_STATUSES = ['OPEN', 'CLOSED', 'ARCHIVED'] as const;
 const HEX_COLOR_REGEX = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -78,6 +80,10 @@ export type UpdatePlatformSettingsInput = Partial<{
   supportEmail: string;
 }>;
 
+export type CreatePlatformBankInput = {
+  name: string;
+};
+
 export type CreateEntityShareInput = {
   username: string;
   permission: (typeof ENTITY_SHARE_PERMISSIONS)[number];
@@ -101,6 +107,8 @@ export type CreateEntityRecordInput = {
   amount: number;
   occurredAt?: string;
   notes?: string;
+  categoryId?: string;
+  subcategoryId?: string;
 };
 
 export type CreateEntityAllocationInput = {
@@ -113,6 +121,8 @@ export type CreateEntityAllocationInput = {
 export type UpdateEntityRecordInput = {
   amount?: number;
   occurredAt?: string;
+  categoryId?: string;
+  subcategoryId?: string;
 };
 
 export type UpdateEntityAllocationInput = {
@@ -131,8 +141,27 @@ export type CreateFinancialAccountInput = {
 export type CreateFinancialIncomeInput = {
   amount: number;
   occurredAt?: string;
-  category?: string;
+  categoryId?: string;
+  subcategoryId?: string;
   sourceLabel?: string;
+};
+
+export type CreateFinancialPeriodInput = {
+  year: number;
+  month: number;
+  status?: (typeof FINANCIAL_PERIOD_STATUSES)[number];
+};
+
+export type CreateFinancialCategoryInput = {
+  direction: (typeof FINANCIAL_ENTRY_DIRECTIONS)[number];
+  name: string;
+  description?: string;
+};
+
+export type CreateFinancialSubcategoryInput = {
+  categoryId: string;
+  name: string;
+  description?: string;
 };
 
 export type UpdateManagedUserInput = Partial<{
@@ -350,6 +379,12 @@ function readOptionalNumber(
   }
 
   return readRequiredNumber(payload, key, options);
+}
+
+function assertInteger(value: number, field: string) {
+  if (!Number.isInteger(value)) {
+    throw new HttpError(400, `El campo ${field} debe ser un numero entero`);
+  }
 }
 
 function readOptionalEnum<T extends readonly string[]>(
@@ -648,6 +683,20 @@ export function parseUpdatePlatformSettingsInput(
   };
 }
 
+export function parseCreatePlatformBankInput(
+  value: unknown,
+): CreatePlatformBankInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['name']);
+
+  return {
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+  };
+}
+
 export function parseCreateEntityShareInput(
   value: unknown,
 ): CreateEntityShareInput {
@@ -720,7 +769,27 @@ export function parseCreateEntityRecordInput(
   value: unknown,
 ): CreateEntityRecordInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt', 'notes']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'notes',
+    'categoryId',
+    'subcategoryId',
+  ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
 
   return {
     amount: readRequiredNumber(payload, 'amount', {
@@ -731,6 +800,8 @@ export function parseCreateEntityRecordInput(
     notes: readOptionalString(payload, 'notes', {
       maxLength: 280,
     }),
+    categoryId,
+    subcategoryId,
   };
 }
 
@@ -764,8 +835,32 @@ export function parseUpdateEntityRecordInput(
   value: unknown,
 ): UpdateEntityRecordInput {
   const payload = ensurePlainObject(value);
-  assertAllowedKeys(payload, ['amount', 'occurredAt']);
-  assertAtLeastOneKey(payload, ['amount', 'occurredAt']);
+  assertAllowedKeys(payload, [
+    'amount',
+    'occurredAt',
+    'categoryId',
+    'subcategoryId',
+  ]);
+  assertAtLeastOneKey(payload, [
+    'amount',
+    'occurredAt',
+    'categoryId',
+    'subcategoryId',
+  ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
 
   return {
     amount: readOptionalNumber(payload, 'amount', {
@@ -773,6 +868,8 @@ export function parseUpdateEntityRecordInput(
       maxDecimalPlaces: 2,
     }),
     occurredAt: readOptionalDateString(payload, 'occurredAt'),
+    categoryId,
+    subcategoryId,
   };
 }
 
@@ -833,9 +930,24 @@ export function parseCreateFinancialIncomeInput(
   assertAllowedKeys(payload, [
     'amount',
     'occurredAt',
-    'category',
+    'categoryId',
+    'subcategoryId',
     'sourceLabel',
   ]);
+
+  const categoryId = readOptionalString(payload, 'categoryId', {
+    maxLength: 120,
+  });
+  const subcategoryId = readOptionalString(payload, 'subcategoryId', {
+    maxLength: 120,
+  });
+
+  if (subcategoryId && !categoryId) {
+    throw new HttpError(
+      400,
+      'Debes seleccionar una categoria antes de elegir la subcategoria',
+    );
+  }
 
   return {
     amount: readRequiredNumber(payload, 'amount', {
@@ -843,11 +955,76 @@ export function parseCreateFinancialIncomeInput(
       maxDecimalPlaces: 2,
     }),
     occurredAt: readOptionalDateString(payload, 'occurredAt'),
-    category: readOptionalString(payload, 'category', {
-      maxLength: 60,
-    }),
+    categoryId,
+    subcategoryId,
     sourceLabel: readOptionalString(payload, 'sourceLabel', {
       maxLength: 160,
+    }),
+  };
+}
+
+export function parseCreateFinancialPeriodInput(
+  value: unknown,
+): CreateFinancialPeriodInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['year', 'month', 'status']);
+
+  const year = readRequiredNumber(payload, 'year', { min: 2000 });
+  const month = readRequiredNumber(payload, 'month', { min: 1 });
+
+  assertInteger(year, 'year');
+  assertInteger(month, 'month');
+
+  if (month > 12) {
+    throw new HttpError(400, 'El campo month no puede ser mayor a 12');
+  }
+
+  return {
+    year,
+    month,
+    status: readOptionalEnum(payload, 'status', FINANCIAL_PERIOD_STATUSES),
+  };
+}
+
+export function parseCreateFinancialCategoryInput(
+  value: unknown,
+): CreateFinancialCategoryInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['direction', 'name', 'description']);
+
+  return {
+    direction: readRequiredEnum(
+      payload,
+      'direction',
+      FINANCIAL_ENTRY_DIRECTIONS,
+    ),
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+    description: readOptionalString(payload, 'description', {
+      maxLength: 180,
+    }),
+  };
+}
+
+export function parseCreateFinancialSubcategoryInput(
+  value: unknown,
+): CreateFinancialSubcategoryInput {
+  const payload = ensurePlainObject(value);
+  assertAllowedKeys(payload, ['categoryId', 'name', 'description']);
+
+  return {
+    categoryId: readRequiredString(payload, 'categoryId', {
+      minLength: 8,
+      maxLength: 120,
+    }),
+    name: readRequiredString(payload, 'name', {
+      minLength: 2,
+      maxLength: 80,
+    }),
+    description: readOptionalString(payload, 'description', {
+      maxLength: 180,
     }),
   };
 }

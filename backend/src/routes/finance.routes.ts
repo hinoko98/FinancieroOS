@@ -32,6 +32,14 @@ export function createFinanceRouter(
     }),
   );
 
+  router.get(
+    '/catalog',
+    asyncHandler(async (_request, response) => {
+      const catalog = await financeService.findCatalog();
+      response.json(catalog);
+    }),
+  );
+
   router.post(
     '/accounts',
     asyncHandler(async (request, response) => {

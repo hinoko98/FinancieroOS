@@ -71,7 +71,7 @@ export function LoginForm() {
 
     if (verificationState === '1') {
       setMode('login');
-      setMessage('Correo verificado correctamente. Ya puedes iniciar sesion.');
+      setMessage('Correo validado correctamente.');
       setError(null);
       setSearchParams({}, { replace: true });
       return;
@@ -82,7 +82,7 @@ export function LoginForm() {
       setError(
         reason && reason !== 'token'
           ? decodeURIComponent(reason)
-          : 'No fue posible validar el correo. Solicita un nuevo registro.',
+          : 'No fue posible validar el correo. Inicia sesion y solicita un nuevo enlace desde tu perfil.',
       );
       setMessage(null);
       setSearchParams({}, { replace: true });
@@ -146,8 +146,8 @@ export function LoginForm() {
         setMode('login');
         setMessage(
           result.delivery === 'EMAIL'
-            ? `Cuenta creada correctamente. Revisa ${result.email} y valida tu correo para activar la cuenta.`
-            : `Cuenta creada correctamente. No hay SMTP configurado, asi que el enlace de validacion quedo registrado en el servidor.`,
+            ? `Cuenta creada correctamente. Puedes iniciar sesion de inmediato. Revisa ${result.email} para validar el correo durante las proximas 24 horas.`
+            : `Cuenta creada correctamente. Puedes iniciar sesion de inmediato. No hay SMTP configurado, asi que el enlace de validacion quedo registrado en el servidor.`,
         );
       }
     } catch (submitError) {
@@ -428,8 +428,9 @@ export function LoginForm() {
             </label>
 
             <p className="text-xs leading-6 text-[var(--color-muted)]">
-              El usuario se sigue generando automaticamente, pero la activacion
-              de la cuenta depende de la validacion del correo dentro de 24 horas.
+              El usuario se sigue generando automaticamente. La validacion del
+              correo es opcional para confirmar que el email existe y el enlace
+              dura 24 horas; si vence, puedes reenviarlo desde tu perfil.
             </p>
           </>
         )}

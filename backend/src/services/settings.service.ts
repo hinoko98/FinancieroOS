@@ -1,6 +1,8 @@
 import { Prisma } from '@prisma/client';
+import { HttpError } from '../lib/http-error';
 import { PrismaService } from '../lib/prisma';
 import type {
+  CreatePlatformBankInput,
   UpdatePlatformSettingsInput,
   UpdateSettingsInput,
 } from '../lib/validation';
@@ -9,7 +11,7 @@ import { AuditService } from './audit.service';
 type UserSettingsRow = {
   id: string;
   userId: string;
-  themePreset: 'LIGHT' | 'DARK' | 'CUSTOM';
+  themePreset: 'LIGHT' | 'DARK' | 'GRAPHITE' | 'CUSTOM';
   customThemeBase: 'LIGHT' | 'DARK';
   userIcon: string;
   dashboardSurfaceColor: string;
@@ -36,9 +38,37 @@ type PlatformSettingsRow = {
   timezone: string;
   currencyCode: string;
   supportEmail: string | null;
+  bankCatalog: string[];
   createdAt: Date;
   updatedAt: Date;
 };
+
+const DEFAULT_PLATFORM_BANKS = [
+  'Bancolombia',
+  'Davivienda',
+  'Banco de Bogota',
+  'Banco Popular',
+  'BBVA',
+  'Banco de Occidente',
+  'AV Villas',
+  'Scotiabank Colpatria',
+  'Banco Agrario',
+  'Banco Caja Social',
+  'Banco Falabella',
+  'Banco Pichincha',
+  'Banco Finandina',
+  'Bancoomeva',
+  'Banco GNB Sudameris',
+  'Lulobank',
+  'Nu',
+  'Nequi',
+  'Daviplata',
+  'Dale!',
+  'MOVii',
+  'Uala',
+  'RappiPay',
+  'Tpaga',
+] as const;
 
 const DEFAULT_USER_SETTINGS: Omit<
   UserSettingsRow,
@@ -71,6 +101,7 @@ const DEFAULT_PLATFORM_SETTINGS: Omit<
   timezone: 'America/Bogota',
   currencyCode: 'COP',
   supportEmail: null,
+  bankCatalog: [...DEFAULT_PLATFORM_BANKS],
 };
 
 export class SettingsService {
@@ -113,20 +144,47 @@ export class SettingsService {
   }
 
   async getPlatformSettings() {
-    const existingSettings = await this.findPlatformSettings();
+    const settings = await this.prisma.platformSetting.upsert({
+      where: { id: 'default' },
+      update: {},
+      create: {
+        id: 'default',
+        ...DEFAULT_PLATFORM_SETTINGS,
+      },
+    });
 
-    if (existingSettings) {
-      return existingSettings;
+    if (settings.bankCatalog.length) {
+      return settings;
     }
 
-    return this.upsertPlatformSettings(DEFAULT_PLATFORM_SETTINGS);
+    return this.prisma.platformSetting.update({
+      where: { id: 'default' },
+      data: {
+        bankCatalog: {
+          set: DEFAULT_PLATFORM_SETTINGS.bankCatalog,
+        },
+      },
+    });
   }
 
   async updatePlatformSettings(
     userId: string,
     dto: UpdatePlatformSettingsInput,
   ) {
-    const settings = await this.upsertPlatformSettings(dto);
+    await this.getPlatformSettings();
+    const settings = await this.prisma.platformSetting.update({
+      where: { id: 'default' },
+      data: {
+        ...(dto.platformName !== undefined ? { platformName: dto.platformName } : {}),
+        ...(dto.platformLabel !== undefined ? { platformLabel: dto.platformLabel } : {}),
+        ...(dto.platformMotto !== undefined ? { platformMotto: dto.platformMotto } : {}),
+        ...(dto.timezone !== undefined ? { timezone: dto.timezone } : {}),
+        ...(dto.currencyCode !== undefined ? { currencyCode: dto.currencyCode } : {}),
+        ...(dto.supportEmail !== undefined
+          ? { supportEmail: dto.supportEmail || null }
+          : {}),
+      },
+    });
 
     await this.auditService.log({
       entityName: 'PlatformSetting',
@@ -138,6 +196,45 @@ export class SettingsService {
     });
 
     return settings;
+  }
+
+  async createPlatformBank(userId: string, dto: CreatePlatformBankInput) {
+    const settings = await this.getPlatformSettings();
+    const normalizedName = this.normalizeBankName(dto.name);
+
+    const alreadyExists = settings.bankCatalog.some(
+      (bank) => this.normalizeBankName(bank) === normalizedName,
+    );
+
+    if (alreadyExists) {
+      throw new HttpError(400, 'Ese banco o billetera ya existe en el catalogo');
+    }
+
+    const nextBankCatalog = [...settings.bankCatalog, this.formatBankName(dto.name)].sort(
+      (left, right) => left.localeCompare(right, 'es'),
+    );
+
+    const updatedSettings = await this.prisma.platformSetting.update({
+      where: { id: settings.id },
+      data: {
+        bankCatalog: {
+          set: nextBankCatalog,
+        },
+      },
+    });
+
+    await this.auditService.log({
+      entityName: 'PlatformSetting',
+      entityId: updatedSettings.id,
+      action: 'UPDATE',
+      summary: `Se agrego un banco al catalogo global`,
+      performedById: userId,
+      after: {
+        bankName: this.formatBankName(dto.name),
+      },
+    });
+
+    return updatedSettings;
   }
 
   private async findUserSettings(userId: string) {
@@ -261,74 +358,29 @@ export class SettingsService {
     return settings;
   }
 
-  private async findPlatformSettings() {
-    const [settings] = await this.prisma.$queryRaw<
-      PlatformSettingsRow[]
-    >(Prisma.sql`
-      SELECT
-        "id",
-        "platformName",
-        "platformLabel",
-        "platformMotto",
-        "timezone",
-        "currencyCode",
-        "supportEmail",
-        "createdAt",
-        "updatedAt"
-      FROM "PlatformSetting"
-      WHERE "id" = 'default'
-      LIMIT 1
-    `);
-
-    return settings ?? null;
+  private normalizeBankName(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[!]+/g, '!');
   }
 
-  private async upsertPlatformSettings(
-    dto: Partial<Omit<PlatformSettingsRow, 'id' | 'createdAt' | 'updatedAt'>>,
-  ) {
-    const [settings] = await this.prisma.$queryRaw<
-      PlatformSettingsRow[]
-    >(Prisma.sql`
-      INSERT INTO "PlatformSetting" (
-        "id",
-        "platformName",
-        "platformLabel",
-        "platformMotto",
-        "timezone",
-        "currencyCode",
-        "supportEmail",
-        "updatedAt"
-      )
-      VALUES (
-        'default',
-        ${dto.platformName ?? DEFAULT_PLATFORM_SETTINGS.platformName},
-        ${dto.platformLabel ?? DEFAULT_PLATFORM_SETTINGS.platformLabel},
-        ${dto.platformMotto ?? DEFAULT_PLATFORM_SETTINGS.platformMotto},
-        ${dto.timezone ?? DEFAULT_PLATFORM_SETTINGS.timezone},
-        ${dto.currencyCode ?? DEFAULT_PLATFORM_SETTINGS.currencyCode},
-        ${dto.supportEmail ?? DEFAULT_PLATFORM_SETTINGS.supportEmail},
-        NOW()
-      )
-      ON CONFLICT ("id") DO UPDATE SET
-        "platformName" = COALESCE(${dto.platformName}, "PlatformSetting"."platformName"),
-        "platformLabel" = COALESCE(${dto.platformLabel}, "PlatformSetting"."platformLabel"),
-        "platformMotto" = COALESCE(${dto.platformMotto}, "PlatformSetting"."platformMotto"),
-        "timezone" = COALESCE(${dto.timezone}, "PlatformSetting"."timezone"),
-        "currencyCode" = COALESCE(${dto.currencyCode}, "PlatformSetting"."currencyCode"),
-        "supportEmail" = COALESCE(${dto.supportEmail}, "PlatformSetting"."supportEmail"),
-        "updatedAt" = NOW()
-      RETURNING
-        "id",
-        "platformName",
-        "platformLabel",
-        "platformMotto",
-        "timezone",
-        "currencyCode",
-        "supportEmail",
-        "createdAt",
-        "updatedAt"
-    `);
+  private formatBankName(value: string) {
+    const trimmedValue = value.trim().replace(/\s+/g, ' ');
 
-    return settings;
+    if (/^(nu|nequi|movii|uala)$/i.test(trimmedValue)) {
+      return trimmedValue.charAt(0).toUpperCase() + trimmedValue.slice(1).toLowerCase();
+    }
+
+    if (/^dale!?$/i.test(trimmedValue)) {
+      return 'Dale!';
+    }
+
+    if (/^daviplata$/i.test(trimmedValue)) {
+      return 'Daviplata';
+    }
+
+    return trimmedValue;
   }
 }

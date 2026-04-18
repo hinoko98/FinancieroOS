@@ -1,37 +1,31 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownToLine, PlusCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { SectionCard } from '@/components/ui/section-card';
 import { StatusPill } from '@/components/ui/status-pill';
-import { formatCurrency, extractApiErrorMessage } from '@/features/entities/lib/entities';
-import { apiClient } from '@/lib/api/client';
-import { useAuth } from '@/lib/auth/auth-context';
-import { COLOMBIA_BANK_OPTIONS } from '@/features/finance/lib/colombia-banks';
+import {
+  extractApiErrorMessage,
+  formatCurrency,
+} from '@/features/entities/lib/entities';
 import {
   FINANCE_ACCOUNTS_QUERY_KEY,
+  FINANCE_CATALOG_QUERY_KEY,
   getFinancialAccountTypeLabel,
   type FinancialAccount,
   type FinancialAccountType,
+  type FinancialCatalog,
 } from '@/features/finance/lib/finance';
-
-const incomeCategoryOptions = [
-  'Sueldo',
-  'Ganancia extra',
-  'Arriendo',
-  'Venta',
-  'Honorarios',
-  'Reembolso',
-  'Otro',
-] as const;
+import { apiClient } from '@/lib/api/client';
+import { useAuth } from '@/lib/auth/auth-context';
 
 const accountTypeOptions = ['AHORROS', 'CORRIENTE', 'BILLETERA', 'OTRO'] as const;
 
 type AccountFormState = {
-  bankName: (typeof COLOMBIA_BANK_OPTIONS)[number];
+  bankName: string;
   accountLabel: string;
   accountType: FinancialAccountType;
   accountMask: string;
@@ -41,7 +35,8 @@ type IncomeFormState = {
   accountId: string;
   amount: string;
   occurredAt: string;
-  category: (typeof incomeCategoryOptions)[number];
+  categoryId: string;
+  subcategoryId: string;
   sourceLabel: string;
 };
 
@@ -53,7 +48,7 @@ export function IncomesWorkspace() {
   const [accountError, setAccountError] = useState<string | null>(null);
   const [incomeError, setIncomeError] = useState<string | null>(null);
   const [accountForm, setAccountForm] = useState<AccountFormState>({
-    bankName: COLOMBIA_BANK_OPTIONS[0],
+    bankName: '',
     accountLabel: '',
     accountType: 'AHORROS',
     accountMask: '',
@@ -62,7 +57,8 @@ export function IncomesWorkspace() {
     accountId: '',
     amount: '',
     occurredAt: '',
-    category: 'Sueldo',
+    categoryId: '',
+    subcategoryId: '',
     sourceLabel: '',
   });
 
@@ -74,6 +70,16 @@ export function IncomesWorkspace() {
     },
     enabled: Boolean(user),
     staleTime: 30_000,
+  });
+
+  const catalogQuery = useQuery({
+    queryKey: FINANCE_CATALOG_QUERY_KEY,
+    queryFn: async () => {
+      const response = await apiClient.get<FinancialCatalog>('/finance/catalog');
+      return response.data;
+    },
+    enabled: Boolean(user),
+    staleTime: 60_000,
   });
 
   const createAccountMutation = useMutation({
@@ -88,7 +94,7 @@ export function IncomesWorkspace() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: FINANCE_ACCOUNTS_QUERY_KEY });
       setAccountForm({
-        bankName: COLOMBIA_BANK_OPTIONS[0],
+        bankName: catalogQuery.data?.banks[0] ?? '',
         accountLabel: '',
         accountType: 'AHORROS',
         accountMask: '',
@@ -106,13 +112,15 @@ export function IncomesWorkspace() {
       accountId: string;
       amount: number;
       occurredAt?: string;
-      category?: string;
+      categoryId?: string;
+      subcategoryId?: string;
       sourceLabel?: string;
     }) => {
       await apiClient.post(`/finance/accounts/${payload.accountId}/incomes`, {
         amount: payload.amount,
         occurredAt: payload.occurredAt,
-        category: payload.category,
+        categoryId: payload.categoryId,
+        subcategoryId: payload.subcategoryId,
         sourceLabel: payload.sourceLabel,
       });
     },
@@ -122,7 +130,8 @@ export function IncomesWorkspace() {
         accountId: '',
         amount: '',
         occurredAt: '',
-        category: 'Sueldo',
+        categoryId: '',
+        subcategoryId: '',
         sourceLabel: '',
       });
       setIncomeError(null);
@@ -134,6 +143,25 @@ export function IncomesWorkspace() {
   });
 
   const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const availableBanks = useMemo(
+    () => catalogQuery.data?.banks ?? [],
+    [catalogQuery.data?.banks],
+  );
+
+  const incomeCategories = useMemo(
+    () =>
+      (catalogQuery.data?.categories ?? []).filter(
+        (category) => category.direction === 'INCOME',
+      ),
+    [catalogQuery.data?.categories],
+  );
+
+  const selectedCategory = useMemo(
+    () =>
+      incomeCategories.find((category) => category.id === incomeForm.categoryId) ??
+      null,
+    [incomeCategories, incomeForm.categoryId],
+  );
 
   const totalBalance = useMemo(
     () => accounts.reduce((accumulator, account) => accumulator + account.balance, 0),
@@ -153,6 +181,17 @@ export function IncomesWorkspace() {
     () => new Set(accounts.map((account) => account.bankName)).size,
     [accounts],
   );
+
+  useEffect(() => {
+    if (!availableBanks.length || accountForm.bankName) {
+      return;
+    }
+
+    setAccountForm((current) => ({
+      ...current,
+      bankName: availableBanks[0],
+    }));
+  }, [accountForm.bankName, availableBanks]);
 
   const submitAccount = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -174,7 +213,8 @@ export function IncomesWorkspace() {
       occurredAt: incomeForm.occurredAt
         ? new Date(incomeForm.occurredAt).toISOString()
         : undefined,
-      category: incomeForm.category,
+      categoryId: incomeForm.categoryId || undefined,
+      subcategoryId: incomeForm.subcategoryId || undefined,
       sourceLabel: incomeForm.sourceLabel || undefined,
     });
   };
@@ -221,6 +261,7 @@ export function IncomesWorkspace() {
               setAccountError(null);
               setAccountModalOpen(true);
             }}
+            disabled={!availableBanks.length}
             className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-brand-deep)]"
           >
             <PlusCircle className="h-4 w-4" />
@@ -233,6 +274,8 @@ export function IncomesWorkspace() {
               setIncomeForm((current) => ({
                 ...current,
                 accountId: current.accountId || accounts[0]?.id || '',
+                categoryId: current.categoryId || incomeCategories[0]?.id || '',
+                subcategoryId: '',
                 occurredAt: new Date().toISOString().slice(0, 16),
               }));
               setIncomeModalOpen(true);
@@ -243,6 +286,13 @@ export function IncomesWorkspace() {
             Registrar ingreso
           </button>
         </div>
+
+        {!availableBanks.length ? (
+          <div className="rounded-[var(--radius-control)] border border-dashed border-[var(--color-line)] bg-[var(--color-panel-strong)] px-4 py-3 text-sm text-[var(--color-muted)]">
+            No hay bancos o billeteras configurados todavia. Un administrador puede
+            cargarlos desde <strong>Ajustes de plataforma</strong>.
+          </div>
+        ) : null}
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-[var(--radius-panel)] border border-[var(--color-line)] bg-[var(--color-panel-strong)] p-5 shadow-[var(--shadow-panel)]">
@@ -348,8 +398,8 @@ export function IncomesWorkspace() {
           >
             <div className="space-y-4 rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white p-5">
               <p className="text-sm leading-7 text-[var(--color-muted)]">
-                La lista de bancos fue movida a <strong>Configuracion</strong> y
-                los movimientos detallados ya no se duplican aqui. Todo el
+                La lista de bancos fue movida a <strong>Ajustes de plataforma</strong>{' '}
+                y los movimientos detallados ya no se duplican aqui. Todo el
                 historial consolidado se consulta en <strong>Registro general</strong>.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -388,18 +438,29 @@ export function IncomesWorkspace() {
               onChange={(event) =>
                 setAccountForm((current) => ({
                   ...current,
-                  bankName: event.target.value as AccountFormState['bankName'],
+                  bankName: event.target.value,
                 }))
               }
               className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              disabled={!availableBanks.length}
+              required
             >
-              {COLOMBIA_BANK_OPTIONS.map((bank) => (
+              {!availableBanks.length ? (
+                <option value="">No hay bancos disponibles</option>
+              ) : null}
+              {availableBanks.map((bank) => (
                 <option key={bank} value={bank}>
                   {bank}
                 </option>
               ))}
             </select>
           </label>
+
+          {!availableBanks.length ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              Este catalogo se administra desde <strong>Ajustes de plataforma</strong>.
+            </p>
+          ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm">
@@ -461,7 +522,7 @@ export function IncomesWorkspace() {
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={createAccountMutation.isPending}
+              disabled={createAccountMutation.isPending || !availableBanks.length}
               className="rounded-full bg-[var(--color-brand)] px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
               {createAccountMutation.isPending ? 'Guardando...' : 'Guardar cuenta'}
@@ -503,18 +564,20 @@ export function IncomesWorkspace() {
             <label className="space-y-2 text-sm">
               <span className="font-semibold">Categoria</span>
               <select
-                value={incomeForm.category}
+                value={incomeForm.categoryId}
                 onChange={(event) =>
                   setIncomeForm((current) => ({
                     ...current,
-                    category: event.target.value as IncomeFormState['category'],
+                    categoryId: event.target.value,
+                    subcategoryId: '',
                   }))
                 }
                 className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               >
-                {incomeCategoryOptions.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                <option value="">Sin categoria tipificada</option>
+                {incomeCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -542,6 +605,32 @@ export function IncomesWorkspace() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm">
+              <span className="font-semibold">Subcategoria</span>
+              <select
+                value={incomeForm.subcategoryId}
+                onChange={(event) =>
+                  setIncomeForm((current) => ({
+                    ...current,
+                    subcategoryId: event.target.value,
+                  }))
+                }
+                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none disabled:cursor-not-allowed disabled:bg-[var(--color-panel-strong)]"
+                disabled={!selectedCategory || selectedCategory.subcategories.length === 0}
+              >
+                <option value="">
+                  {selectedCategory
+                    ? 'Sin subcategoria'
+                    : 'Selecciona primero una categoria'}
+                </option>
+                {selectedCategory?.subcategories.map((subcategory) => (
+                  <option key={subcategory.id} value={subcategory.id}>
+                    {subcategory.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="space-y-2 text-sm">
               <span className="font-semibold">Fecha y hora</span>
               <input
                 type="datetime-local"
@@ -555,22 +644,29 @@ export function IncomesWorkspace() {
                 className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
               />
             </label>
-
-            <label className="space-y-2 text-sm">
-              <span className="font-semibold">Detalle</span>
-              <input
-                value={incomeForm.sourceLabel}
-                onChange={(event) =>
-                  setIncomeForm((current) => ({
-                    ...current,
-                    sourceLabel: event.target.value,
-                  }))
-                }
-                className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
-                placeholder="Nomina abril / Venta externa"
-              />
-            </label>
           </div>
+
+          <label className="space-y-2 text-sm">
+            <span className="font-semibold">Detalle</span>
+            <input
+              value={incomeForm.sourceLabel}
+              onChange={(event) =>
+                setIncomeForm((current) => ({
+                  ...current,
+                  sourceLabel: event.target.value,
+                }))
+              }
+              className="w-full rounded-[var(--radius-control)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none"
+              placeholder="Nomina abril / Venta externa"
+            />
+          </label>
+
+          {catalogQuery.isSuccess && incomeCategories.length === 0 ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              No hay categorias de ingreso configuradas todavia. Un administrador
+              puede crearlas desde <strong>Administracion</strong>.
+            </p>
+          ) : null}
 
           {incomeError ? (
             <p className="text-sm text-[var(--color-danger)]">{incomeError}</p>

@@ -5,6 +5,8 @@ export type ManagedUser = {
   id: string;
   username: string;
   email: string | null;
+  emailVerifiedAt: string | null;
+  emailVerificationExpiresAt: string | null;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -19,6 +21,7 @@ export type ManagedUser = {
 
 export const ADMIN_USERS_QUERY_KEY = ['admin-users'];
 export const ADMIN_OVERVIEW_QUERY_KEY = ['admin-overview'];
+export const ADMIN_FINANCE_STRUCTURE_QUERY_KEY = ['admin-finance-structure'];
 
 export type AdminOverview = {
   totals: {
@@ -48,6 +51,45 @@ export type AdminOverview = {
   }[];
 };
 
+export type AdminFinancialPeriod = {
+  id: string;
+  year: number;
+  month: number;
+  label: string;
+  status: 'OPEN' | 'CLOSED' | 'ARCHIVED';
+  startsAt: string;
+  endsAt: string;
+};
+
+export type AdminFinancialSubcategory = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+};
+
+export type AdminFinancialCategory = {
+  id: string;
+  direction: 'INCOME' | 'EXPENSE';
+  name: string;
+  description: string | null;
+  createdAt: string;
+  subcategories: AdminFinancialSubcategory[];
+};
+
+export type AdminFinanceStructure = {
+  summary: {
+    periodsCount: number;
+    categoriesCount: number;
+    subcategoriesCount: number;
+    incomeCategoriesCount: number;
+    expenseCategoriesCount: number;
+    classifiedMovementsCount: number;
+  };
+  periods: AdminFinancialPeriod[];
+  categories: AdminFinancialCategory[];
+};
+
 export function getManagedUserRoleLabel(role: ManagedUserRole) {
   switch (role) {
     case 'ADMIN':
@@ -69,5 +111,16 @@ export function getManagedUserStatusLabel(status: ManagedUserStatus) {
       return 'Inactivo';
     case 'ARCHIVED':
       return 'Archivado';
+  }
+}
+
+export function getAdminFinancialDirectionLabel(
+  direction: AdminFinancialCategory['direction'],
+) {
+  switch (direction) {
+    case 'INCOME':
+      return 'Ingreso';
+    case 'EXPENSE':
+      return 'Egreso';
   }
 }

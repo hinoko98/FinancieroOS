@@ -103,6 +103,9 @@ export class EntitiesService {
                       fullName: true,
                     },
                   },
+                  period: true,
+                  financialCategory: true,
+                  financialSubcategory: true,
                 },
                 orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
               },
@@ -155,6 +158,28 @@ export class EntitiesService {
             notes: record.notes,
             createdAt: record.createdAt,
             updatedAt: record.updatedAt,
+            period: record.period
+              ? {
+                  id: record.period.id,
+                  year: record.period.year,
+                  month: record.period.month,
+                  label: record.period.label,
+                  status: record.period.status,
+                }
+              : null,
+            financialCategory: record.financialCategory
+              ? {
+                  id: record.financialCategory.id,
+                  direction: record.financialCategory.direction,
+                  name: record.financialCategory.name,
+                }
+              : null,
+            financialSubcategory: record.financialSubcategory
+              ? {
+                  id: record.financialSubcategory.id,
+                  name: record.financialSubcategory.name,
+                }
+              : null,
             performedBy: record.performedBy,
           })),
         };
@@ -494,11 +519,20 @@ export class EntitiesService {
     const access = await this.getEntityAccess(item.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
+    const occurredAt = dto.occurredAt ? new Date(dto.occurredAt) : new Date();
+    const [classification, period] = await Promise.all([
+      this.resolveExpenseClassification(dto.categoryId, dto.subcategoryId),
+      this.ensurePeriodForDate(occurredAt),
+    ]);
+
     const record = await this.prisma.trackingEntityRecord.create({
       data: {
         itemId: item.id,
+        periodId: period.id,
+        financialCategoryId: classification.category?.id ?? null,
+        financialSubcategoryId: classification.subcategory?.id ?? null,
         amount: dto.amount,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : new Date(),
+        occurredAt,
         notes: this.optionalText(dto.notes),
         performedById: userId,
       },
@@ -510,6 +544,9 @@ export class EntitiesService {
             fullName: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
       },
     });
 
@@ -523,6 +560,9 @@ export class EntitiesService {
         itemId: item.id,
         amount: Number(record.amount),
         occurredAt: record.occurredAt,
+        periodId: record.periodId,
+        financialCategoryId: record.financialCategoryId,
+        financialSubcategoryId: record.financialSubcategoryId,
       },
     });
 
@@ -533,6 +573,28 @@ export class EntitiesService {
       notes: record.notes,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
+      period: record.period
+        ? {
+            id: record.period.id,
+            year: record.period.year,
+            month: record.period.month,
+            label: record.period.label,
+            status: record.period.status,
+          }
+        : null,
+      financialCategory: record.financialCategory
+        ? {
+            id: record.financialCategory.id,
+            direction: record.financialCategory.direction,
+            name: record.financialCategory.name,
+          }
+        : null,
+      financialSubcategory: record.financialSubcategory
+        ? {
+            id: record.financialSubcategory.id,
+            name: record.financialSubcategory.name,
+          }
+        : null,
       performedBy: record.performedBy,
     };
   }
@@ -693,6 +755,9 @@ export class EntitiesService {
             entity: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
         performedBy: {
           select: {
             id: true,
@@ -710,11 +775,27 @@ export class EntitiesService {
     const access = await this.getEntityAccess(record.item.entityId, userId);
     this.assertEditableAccess(access.accessLevel);
 
+    const nextOccurredAt = dto.occurredAt
+      ? new Date(dto.occurredAt)
+      : record.occurredAt;
+    const [classification, period] = await Promise.all([
+      this.resolveExpenseClassification(
+        dto.categoryId ?? record.financialCategoryId ?? undefined,
+        dto.categoryId === undefined && dto.subcategoryId === undefined
+          ? (record.financialSubcategoryId ?? undefined)
+          : dto.subcategoryId,
+      ),
+      this.ensurePeriodForDate(nextOccurredAt),
+    ]);
+
     const updatedRecord = await this.prisma.trackingEntityRecord.update({
       where: { id: record.id },
       data: {
         amount: dto.amount ?? undefined,
-        occurredAt: dto.occurredAt ? new Date(dto.occurredAt) : undefined,
+        occurredAt: dto.occurredAt ? nextOccurredAt : undefined,
+        periodId: period.id,
+        financialCategoryId: classification.category?.id ?? null,
+        financialSubcategoryId: classification.subcategory?.id ?? null,
       },
       include: {
         performedBy: {
@@ -724,6 +805,9 @@ export class EntitiesService {
             fullName: true,
           },
         },
+        period: true,
+        financialCategory: true,
+        financialSubcategory: true,
       },
     });
 
@@ -736,10 +820,16 @@ export class EntitiesService {
       before: {
         amount: Number(record.amount),
         occurredAt: record.occurredAt,
+        periodId: record.periodId,
+        financialCategoryId: record.financialCategoryId,
+        financialSubcategoryId: record.financialSubcategoryId,
       },
       after: {
         amount: Number(updatedRecord.amount),
         occurredAt: updatedRecord.occurredAt,
+        periodId: updatedRecord.periodId,
+        financialCategoryId: updatedRecord.financialCategoryId,
+        financialSubcategoryId: updatedRecord.financialSubcategoryId,
       },
     });
 
@@ -750,6 +840,28 @@ export class EntitiesService {
       notes: updatedRecord.notes,
       createdAt: updatedRecord.createdAt,
       updatedAt: updatedRecord.updatedAt,
+      period: updatedRecord.period
+        ? {
+            id: updatedRecord.period.id,
+            year: updatedRecord.period.year,
+            month: updatedRecord.period.month,
+            label: updatedRecord.period.label,
+            status: updatedRecord.period.status,
+          }
+        : null,
+      financialCategory: updatedRecord.financialCategory
+        ? {
+            id: updatedRecord.financialCategory.id,
+            direction: updatedRecord.financialCategory.direction,
+            name: updatedRecord.financialCategory.name,
+          }
+        : null,
+      financialSubcategory: updatedRecord.financialSubcategory
+        ? {
+            id: updatedRecord.financialSubcategory.id,
+            name: updatedRecord.financialSubcategory.name,
+          }
+        : null,
       performedBy: updatedRecord.performedBy,
     };
   }
@@ -1118,6 +1230,90 @@ export class EntitiesService {
 
   private normalizeUsername(value: string) {
     return value.trim().replace(/^@+/, '').toLowerCase();
+  }
+
+  private async resolveExpenseClassification(
+    categoryId?: string,
+    subcategoryId?: string,
+  ) {
+    if (!categoryId) {
+      return {
+        category: null,
+        subcategory: null,
+      };
+    }
+
+    const category = await this.prisma.financialCategory.findUnique({
+      where: {
+        id: categoryId,
+      },
+      include: {
+        subcategories: true,
+      },
+    });
+
+    if (!category || category.direction !== 'EXPENSE') {
+      throw new HttpError(404, 'Categoria financiera de egreso no encontrada');
+    }
+
+    if (!subcategoryId) {
+      return {
+        category,
+        subcategory: null,
+      };
+    }
+
+    const subcategory = category.subcategories.find(
+      (item) => item.id === subcategoryId,
+    );
+
+    if (!subcategory) {
+      throw new HttpError(
+        400,
+        'La subcategoria no pertenece a la categoria seleccionada',
+      );
+    }
+
+    return {
+      category,
+      subcategory,
+    };
+  }
+
+  private async ensurePeriodForDate(date: Date) {
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    const startsAt = new Date(Date.UTC(year, month - 1, 1));
+    const endsAt = new Date(Date.UTC(year, month, 0));
+
+    return this.prisma.financialPeriod.upsert({
+      where: {
+        year_month: {
+          year,
+          month,
+        },
+      },
+      update: {},
+      create: {
+        year,
+        month,
+        label: this.buildPeriodLabel(year, month),
+        startsAt,
+        endsAt,
+        status: 'OPEN',
+      },
+    });
+  }
+
+  private buildPeriodLabel(year: number, month: number) {
+    const formatter = new Intl.DateTimeFormat('es-CO', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+    const rawLabel = formatter.format(new Date(Date.UTC(year, month - 1, 1)));
+
+    return rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
   }
 
   private async getFinancialAccountBalance(

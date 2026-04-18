@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import AdministrationFinanceStructurePage from '@/app/administracion/estructura-financiera/page';
 import AdministrationPage from '@/app/administracion/page';
 import AdministrationPlatformPage from '@/app/administracion/plataforma/page';
 import AdministrationUsersPage from '@/app/administracion/usuarios/page';
@@ -39,6 +40,10 @@ function DocumentTitleSync() {
       ['/configuracion', 'Configuracion | Control Financiero'],
       ['/administracion', 'Administracion | Control Financiero'],
       ['/administracion/usuarios', 'Usuarios del sistema | Control Financiero'],
+      [
+        '/administracion/estructura-financiera',
+        'Estructura financiera | Control Financiero',
+      ],
       ['/administracion/plataforma', 'Ajustes de plataforma | Control Financiero'],
     ]);
 
@@ -68,6 +73,10 @@ export function App() {
         <Route path="/configuracion" element={<ConfigurationPage />} />
         <Route path="/administracion" element={<AdministrationPage />} />
         <Route path="/administracion/usuarios" element={<AdministrationUsersPage />} />
+        <Route
+          path="/administracion/estructura-financiera"
+          element={<AdministrationFinanceStructurePage />}
+        />
         <Route
           path="/administracion/plataforma"
           element={<AdministrationPlatformPage />}

@@ -43,6 +43,22 @@ export type EntityRecord = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  period: {
+    id: string;
+    year: number;
+    month: number;
+    label: string;
+    status: 'OPEN' | 'CLOSED' | 'ARCHIVED';
+  } | null;
+  financialCategory: {
+    id: string;
+    direction: 'INCOME' | 'EXPENSE';
+    name: string;
+  } | null;
+  financialSubcategory: {
+    id: string;
+    name: string;
+  } | null;
   performedBy: Performer;
 };
 
@@ -92,6 +108,8 @@ export type EntityHistoryEntry = {
   balanceAfter: number;
   label: string;
   secondaryLabel: string | null;
+  classificationLabel: string | null;
+  periodLabel: string | null;
   serviceId: string | null;
   serviceName: string | null;
   performedBy: Performer;
@@ -225,6 +243,8 @@ export function getEntityHistory(entity: Entity) {
       secondaryLabel: allocation.sourceAccount
         ? `${allocation.sourceAccount.bankName} / ${allocation.sourceAccount.accountLabel}`
         : null,
+      classificationLabel: null,
+      periodLabel: null,
       serviceId: null,
       serviceName: null,
       performedBy: allocation.performedBy,
@@ -239,6 +259,10 @@ export function getEntityHistory(entity: Entity) {
         debitAmount: record.amount,
         label: item.name,
         secondaryLabel: item.paymentReference,
+        classificationLabel: record.financialSubcategory
+          ? `${record.financialCategory?.name ?? 'Sin categoria'} / ${record.financialSubcategory.name}`
+          : record.financialCategory?.name ?? null,
+        periodLabel: record.period?.label ?? null,
         serviceId: item.id,
         serviceName: item.name,
         performedBy: record.performedBy,

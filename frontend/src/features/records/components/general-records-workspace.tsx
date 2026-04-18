@@ -93,9 +93,13 @@ export function GeneralRecordsWorkspace() {
           item.records.map((record) => ({
             id: `payment-${record.id}`,
             kind: 'payment' as const,
-            title: item.name,
+            title: record.financialSubcategory
+              ? `${record.financialCategory?.name ?? 'Pago'} / ${record.financialSubcategory.name}`
+              : record.financialCategory?.name ?? item.name,
             origin: entity.name,
-            destination: item.paymentReference || item.name,
+            destination: `${item.name}${record.period ? ` / ${record.period.label}` : ''}${
+              item.paymentReference ? ` / Ref ${item.paymentReference}` : ''
+            }`,
             occurredAt: record.occurredAt,
             performedByName: record.performedBy.fullName,
             amount: record.amount,

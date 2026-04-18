@@ -6,9 +6,40 @@ import {
   ThemeProvider,
   createTheme,
 } from '@mui/material';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export function MuiProvider({ children }: { children: React.ReactNode }) {
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    if (typeof document === 'undefined') {
+      return 'light';
+    }
+
+    return document.documentElement.dataset.dashboardTheme === 'dark'
+      ? 'dark'
+      : 'light';
+  });
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const root = document.documentElement;
+    const syncThemeMode = () => {
+      setThemeMode(root.dataset.dashboardTheme === 'dark' ? 'dark' : 'light');
+    };
+
+    syncThemeMode();
+
+    const observer = new MutationObserver(syncThemeMode);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ['data-dashboard-theme'],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   const theme = useMemo(
     () =>
       createTheme({
@@ -24,27 +55,28 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
           borderRadius: 14,
         },
         palette: {
-          mode: 'light',
+          mode: themeMode,
           primary: {
-            main: '#6f4e37',
+            main: 'var(--color-brand)',
           },
           secondary: {
-            main: '#9a6a1f',
+            main: 'var(--color-warning)',
           },
           success: {
-            main: '#1f7a45',
+            main: 'var(--color-success)',
           },
           error: {
-            main: '#a63f2e',
+            main: 'var(--color-danger)',
           },
           background: {
-            default: '#eadfce',
-            paper: '#fffaf4',
+            default: 'var(--color-surface)',
+            paper: 'var(--color-panel-strong)',
           },
           text: {
-            primary: '#3e2c23',
-            secondary: '#7a6558',
+            primary: 'var(--color-ink)',
+            secondary: 'var(--color-muted)',
           },
+          divider: 'var(--color-line)',
         },
         components: {
           MuiCssBaseline: {
@@ -54,9 +86,40 @@ export function MuiProvider({ children }: { children: React.ReactNode }) {
               },
             },
           },
+          MuiPaper: {
+            styleOverrides: {
+              root: {
+                backgroundImage: 'none',
+                backgroundColor: 'var(--color-panel-strong)',
+                color: 'var(--color-ink)',
+              },
+            },
+          },
+          MuiTableCell: {
+            styleOverrides: {
+              root: {
+                borderColor: 'var(--color-line)',
+                color: 'var(--color-ink)',
+              },
+              head: {
+                color: 'var(--color-muted)',
+              },
+            },
+          },
+          MuiOutlinedInput: {
+            styleOverrides: {
+              root: {
+                backgroundColor: 'var(--color-panel-strong)',
+                color: 'var(--color-ink)',
+              },
+              notchedOutline: {
+                borderColor: 'var(--color-line)',
+              },
+            },
+          },
         },
       }),
-    [],
+    [themeMode],
   );
 
   return (

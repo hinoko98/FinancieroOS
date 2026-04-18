@@ -5,13 +5,13 @@ import { useMutation } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { CircleHelp, RefreshCcw, RotateCcw, Save } from 'lucide-react';
 import { SectionCard } from '@/components/ui/section-card';
-import { BanksCatalogCard } from '@/features/finance/components/banks-catalog-card';
 import { apiClient } from '@/lib/api/client';
 import {
   type DashboardSettings,
   useSettings,
 } from '@/lib/settings/settings-context';
 import {
+  graphiteThemeColors,
   darkThemeColors,
   lightThemeColors,
   themePresetOptions,
@@ -280,8 +280,11 @@ function AppearanceWorkspaceForm({
       return;
     }
 
-    const nextBase = preset === 'DARK' ? 'DARK' : 'LIGHT';
-    setThemeWithBase(preset, nextBase, getBasePalette(nextBase));
+    const nextBase =
+      preset === 'DARK' || preset === 'GRAPHITE' ? 'DARK' : 'LIGHT';
+    const nextPalette =
+      preset === 'GRAPHITE' ? graphiteThemeColors : getBasePalette(nextBase);
+    setThemeWithBase(preset, nextBase, nextPalette);
   };
 
   const handlePaletteChange = (
@@ -348,6 +351,8 @@ function AppearanceWorkspaceForm({
                             backgroundColor:
                               option.id === 'DARK'
                                 ? darkThemeColors.dashboardBrandColor
+                                : option.id === 'GRAPHITE'
+                                  ? graphiteThemeColors.dashboardBrandColor
                                 : option.id === 'LIGHT'
                                   ? lightThemeColors.dashboardBrandColor
                                   : paletteForm.dashboardBrandColor,
@@ -560,8 +565,6 @@ function AppearanceWorkspaceForm({
           </div>
         </form>
       </SectionCard>
-
-      <BanksCatalogCard />
     </div>
   );
 }

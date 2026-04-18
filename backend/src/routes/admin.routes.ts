@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { asyncHandler } from '../lib/async-handler';
-import { parseUpdateManagedUserInput } from '../lib/validation';
+import {
+  parseCreateFinancialCategoryInput,
+  parseCreateFinancialPeriodInput,
+  parseCreateFinancialSubcategoryInput,
+  parseUpdateManagedUserInput,
+} from '../lib/validation';
 import {
   getAuthenticatedUser,
   requireAdmin,
@@ -29,6 +34,54 @@ export function createAdminRouter(
     asyncHandler(async (_request, response) => {
       const users = await adminService.findAllUsers();
       response.json(users);
+    }),
+  );
+
+  router.get(
+    '/finance-structure',
+    requireAdmin(jwtSecret),
+    asyncHandler(async (_request, response) => {
+      const structure = await adminService.findFinanceStructure();
+      response.json(structure);
+    }),
+  );
+
+  router.post(
+    '/financial-periods',
+    requireAdmin(jwtSecret),
+    asyncHandler(async (request, response) => {
+      const authUser = getAuthenticatedUser(request as AuthenticatedRequest);
+      const period = await adminService.createFinancialPeriod(
+        parseCreateFinancialPeriodInput(request.body),
+        authUser.sub,
+      );
+      response.status(201).json(period);
+    }),
+  );
+
+  router.post(
+    '/financial-categories',
+    requireAdmin(jwtSecret),
+    asyncHandler(async (request, response) => {
+      const authUser = getAuthenticatedUser(request as AuthenticatedRequest);
+      const category = await adminService.createFinancialCategory(
+        parseCreateFinancialCategoryInput(request.body),
+        authUser.sub,
+      );
+      response.status(201).json(category);
+    }),
+  );
+
+  router.post(
+    '/financial-subcategories',
+    requireAdmin(jwtSecret),
+    asyncHandler(async (request, response) => {
+      const authUser = getAuthenticatedUser(request as AuthenticatedRequest);
+      const subcategory = await adminService.createFinancialSubcategory(
+        parseCreateFinancialSubcategoryInput(request.body),
+        authUser.sub,
+      );
+      response.status(201).json(subcategory);
     }),
   );
 
