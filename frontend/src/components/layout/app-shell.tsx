@@ -128,6 +128,10 @@ function getPageTitle(pathname: string) {
     return 'Ajustes de plataforma';
   }
 
+  if (pathname === '/administracion/rediseno-mvp') {
+    return 'Rediseño MVP';
+  }
+
   if (pathname === '/mi-perfil') {
     return 'Mi perfil';
   }
@@ -970,6 +974,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <span className="truncate">Ajustes de plataforma</span>
+                  </Link>
+                  <Link
+                    href="/administracion/rediseno-mvp"
+                    onClick={closeSidebarOnMobile}
+                    className={cn(
+                      'flex items-center gap-3 rounded-[calc(var(--radius-control)-4px)] px-3 py-2 text-sm transition',
+                      pathname === '/administracion/rediseno-mvp'
+                        ? 'bg-white/12 text-white'
+                        : 'text-[#f8e8d7]/76 hover:bg-white/8 hover:text-white',
+                    )}
+                  >
+                    <span className="truncate">Rediseño MVP</span>
                   </Link>
                 </div>
               ) : null}
